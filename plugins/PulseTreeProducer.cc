@@ -67,7 +67,7 @@
 
 class PulseTreeProducer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 public:
-  explicit PulseTreeProducer(const edm::ParameterSet& ); // , edm::ConsumesCollector& );
+  explicit PulseTreeProducer(const edm::ParameterSet& ); // z, edm::ConsumesCollector& );
   ~PulseTreeProducer();
   
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
@@ -89,8 +89,10 @@ private:
   edm::EDGetTokenT<EEDigiCollection> _token_eedigi;
   
   
-  edm::ESHandle<EcalPedestals> _peds;
-  edm::ESGetToken<EcalPedestals, EcalPedestalsRcd> _pedsToken;
+//   edm::ESHandle<EcalPedestals> _peds;
+//   edm::ESGetToken<EcalPedestals, EcalPedestalsRcd> _pedsToken;
+  
+  const EcalPedestals* _peds;
   
   
   TTree *_outTree;
@@ -162,7 +164,6 @@ PulseTreeProducer::PulseTreeProducer(const edm::ParameterSet& iConfig) //,  edm:
   
 //   _pedsToken = myConsumesCollector.esConsumes<EcalPedestals, EcalPedestalsRcd>();
   
-  
   _outTree = fs->make<TTree>("tree","tree");
   
   _outTree->Branch("run",               &_run,             "run/i");
@@ -220,6 +221,15 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   _lumi = iEvent.eventAuxiliary().luminosityBlock();
   _bx = iEvent.eventAuxiliary().bunchCrossing();
   _event = iEvent.eventAuxiliary().event();
+  
+  
+  
+  
+  //---- pedestals
+  edm::ESHandle< EcalPedestals > ecalPedestals;
+//   iSetup.get< EcalPedestalsRcd >().get(ecalPedestals);
+  _peds = ecalPedestals.product();
+  
   
   
   
@@ -339,7 +349,7 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   for (EBDigiCollection::const_iterator itdigi = ebdigis->begin(); itdigi != ebdigis->end(); itdigi++ ) {
     
-    float pedestal = 10; // FIXME
+    float pedestal = 10; // FIXME   // Get pedestals from conditions
     //                                                           0xFFF = 4095
     for (int iSample = 0; iSample < 10; iSample++) {
       float value = ( int( (*itdigi) [iSample] ) & 0xFFF );
