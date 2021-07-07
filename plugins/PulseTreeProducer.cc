@@ -30,6 +30,10 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 
+#include "FWCore/Framework/interface/EventSetup.h"
+
+
+
 
 // ECAL specific
 
@@ -227,8 +231,9 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   //---- pedestals
   edm::ESHandle< EcalPedestals > ecalPedestals;
-//   iSetup.get< EcalPedestalsRcd >().get(ecalPedestals);
+  iSetup.get<EcalPedestalsRcd>().get(ecalPedestals);
   _peds = ecalPedestals.product();
+  
   
   
   
@@ -349,7 +354,10 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   for (EBDigiCollection::const_iterator itdigi = ebdigis->begin(); itdigi != ebdigis->end(); itdigi++ ) {
     
-    float pedestal = 10; // FIXME   // Get pedestals from conditions
+    float pedestal = 0;    
+    DetId id = (EBDetId&)((*itdigi));
+    pedestal = float((_peds->find(id))->mean_x12);
+    
     //                                                           0xFFF = 4095
     for (int iSample = 0; iSample < 10; iSample++) {
       float value = ( int( (*itdigi) [iSample] ) & 0xFFF );
@@ -360,7 +368,10 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   for (EEDigiCollection::const_iterator itdigi = eedigis->begin(); itdigi != eedigis->end(); itdigi++ ) {
     
-    float pedestal = 10; // FIXME
+    float pedestal = 0;
+    DetId id = (EEDetId&)((*itdigi));
+    pedestal = float((_peds->find(id))->mean_x12);
+    
     //                                                           0xFFF = 4095
     for (int iSample = 0; iSample < 10; iSample++) {
       float value = ( int( (*itdigi) [iSample] ) & 0xFFF );

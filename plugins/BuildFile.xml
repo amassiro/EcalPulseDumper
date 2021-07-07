@@ -14,6 +14,7 @@
 <use name="Geometry/EcalMapping"/>
 <use name="Geometry/CaloTopology"/>
 
+<!-- <use name="CondTools/Ecal"/> -->
 
 
 
