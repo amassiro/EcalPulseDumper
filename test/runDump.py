@@ -47,16 +47,23 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2021_realistic', '')
 
 process.PulseTreeProducer = cms.EDAnalyzer('PulseTreeProducer',
-                            EcalRecHitsEBCollection = cms.InputTag("ecalRecHit",  "EcalRecHitsEB"),
-                            EcalRecHitsEECollection = cms.InputTag("ecalRecHit",  "EcalRecHitsEE"),
+                            EcalUncalibRecHitsEBCollection = cms.InputTag("ecalMultiFitUncalibRecHit",  "EcalUncalibRecHitsEB"),
+                            EcalUncalibRecHitsEECollection = cms.InputTag("ecalMultiFitUncalibRecHit",  "EcalUncalibRecHitsEE"),
 
-                            EBDigiCollection = cms.InputTag("selectDigi",  "selectedEcalEBDigiCollection"),
-                            EEDigiCollection = cms.InputTag("selectDigi",  "selectedEcalEEDigiCollection"),
-                            
-                            #EBDigiCollection                      "selectDigi"                "selectedEcalEBDigiCollection"   "RECO"    
-                            #EEDigiCollection                      "selectDigi"                "selectedEcalEEDigiCollection"   "RECO"    
+                            EcalUncalibRecHitsEBCollectionSecond = cms.InputTag("ecalUncalibRecHitConvertGPU2CPUFormat", "EcalUncalibRecHitsEBfromGPU"),
+                            EcalUncalibRecHitsEECollectionSecond = cms.InputTag("ecalUncalibRecHitConvertGPU2CPUFormat", "EcalUncalibRecHitsEEfromGPU"),
+
+                            #EcalRecHitsEBCollection = cms.InputTag("ecalRecHit",  "EcalRecHitsEB"),
+                            #EcalRecHitsEECollection = cms.InputTag("ecalRecHit",  "EcalRecHitsEE"),
+
+                            EBDigiCollection = cms.InputTag("ecalDigis",  "ebDigis"),
+                            EEDigiCollection = cms.InputTag("ecalDigis",  "eeDigis"),
 
                            )
+
+#edm::SortedCollection<EcalUncalibratedRecHit,edm::StrictWeakOrdering<EcalUncalibratedRecHit> >    "ecalMultiFitUncalibRecHit"   "EcalUncalibRecHitsEB"   "RECO"    
+#EBDigiCollection                      "ecalDigis"                 "ebDigis"         "RECO"    
+
 
 process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32(50)
 
