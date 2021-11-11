@@ -107,6 +107,8 @@ private:
   UShort_t _event;      
   
   
+  float _time_EB[61200];
+  float _time_second_EB[61200];
   float _amplitude_EB[61200];
   float _amplitude_second_EB[61200];
   float _chi2_EB[61200];
@@ -118,6 +120,8 @@ private:
   float _digi_ped_subtracted_EB[61200*10];
   
   
+  float _time_EE[14648];
+  float _time_second_EE[14648];
   float _amplitude_EE[14648];
   float _amplitude_second_EE[14648];
   float _chi2_EE[14648];
@@ -176,6 +180,8 @@ PulseTreeProducer::PulseTreeProducer(const edm::ParameterSet& iConfig) //,  edm:
   _outTree->Branch("event",             &_event,           "event/i");
   
   _outTree->Branch("digi_ped_subtracted_EB",        _digi_ped_subtracted_EB,        "digi_ped_subtracted_EB[612000]/F"); // 61200*10
+  _outTree->Branch("time_EB",             _time_EB,             "time_EB[61200]/F");
+  _outTree->Branch("time_second_EB",      _time_second_EB,      "time_second_EB[61200]/F");
   _outTree->Branch("amplitude_EB",        _amplitude_EB,        "amplitude_EB[61200]/F");
   _outTree->Branch("amplitude_second_EB", _amplitude_second_EB, "amplitude_second_EB[61200]/F");
   _outTree->Branch("chi2_EB",             _chi2_EB,             "chi2_EB[61200]/F");
@@ -186,6 +192,8 @@ PulseTreeProducer::PulseTreeProducer(const edm::ParameterSet& iConfig) //,  edm:
   _outTree->Branch("iphi",                _iphi,                "iphi[61200]/I");
   
   _outTree->Branch("digi_ped_subtracted_EE",        _digi_ped_subtracted_EE,        "digi_ped_subtracted_EE[146480]/F"); // 14648*10
+  _outTree->Branch("time_EE",             _time_EE,             "time_EE[14648]/F");
+  _outTree->Branch("time_second_EE",      _time_second_EE,      "time_second_EE[14648]/F");
   _outTree->Branch("amplitude_EE",        _amplitude_EE,        "amplitude_EE[14648]/F");
   _outTree->Branch("amplitude_second_EE", _amplitude_second_EE, "amplitude_second_EE[14648]/F");
   _outTree->Branch("chi2_EE",             _chi2_EE,             "chi2_EE[14648]/F");
@@ -278,6 +286,8 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   //---- setup default
   for (int ixtal=0; ixtal < 61200; ixtal++) {
     for (int i=0; i<10; i++) _digi_ped_subtracted_EB[ixtal*10+i] = -999;
+    _time_EB[ixtal] = -999;
+    _time_second_EB[ixtal] = -999;
     _amplitude_EB[ixtal] = -999;
     _amplitude_second_EB[ixtal] = -999;
     _chi2_EB[ixtal] = -999;
@@ -289,6 +299,8 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   }
   for (int ixtal=0; ixtal < 14648; ixtal++) {
     for (int i=0; i<10; i++) _digi_ped_subtracted_EE[ixtal*10+i] = -999;
+    _time_EE[ixtal] = -999;
+    _time_second_EE[ixtal] = -999;
     _amplitude_EE[ixtal] = -999;
     _amplitude_second_EE[ixtal] = -999;
     _chi2_EE[ixtal] = -999;
@@ -310,6 +322,7 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   _size_EB = ebrechits->size();
   //   std::cout << " ebrechits->size() = " << ebrechits->size() << std::endl;
   for (EcalUncalibratedRecHitCollection::const_iterator itrechit = ebrechits->begin(); itrechit != ebrechits->end(); itrechit++ ) {
+    _time_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->jitter();  //----> only in EcalUncalibratedRecHit
     _amplitude_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitude();  //----> only in EcalUncalibratedRecHit
     _chi2_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->chi2();  //----> only in EcalUncalibratedRecHit
     _amplitudeError_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitudeError();  //----> only in EcalUncalibratedRecHit
@@ -320,6 +333,7 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   _size_EE = eerechits->size();
   //   std::cout << " eerechits->size() = " << eerechits->size() << std::endl;
   for (EcalUncalibratedRecHitCollection::const_iterator itrechit = eerechits->begin(); itrechit != eerechits->end(); itrechit++ ) {
+    _time_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->jitter();  //----> only in EcalUncalibratedRecHit
     _amplitude_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitude();  //----> only in EcalUncalibratedRecHit
     _chi2_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->chi2();  //----> only in EcalUncalibratedRecHit
     _amplitudeError_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitudeError();  //----> only in EcalUncalibratedRecHit
@@ -331,6 +345,7 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   
   for (EcalUncalibratedRecHitCollection::const_iterator itrechit = ebrechits_second->begin(); itrechit != ebrechits_second->end(); itrechit++ ) {
+    _time_second_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->jitter();  //----> only in EcalUncalibratedRecHit
     _amplitude_second_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitude();  //----> only in EcalUncalibratedRecHit
     _chi2_second_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->chi2();  //----> only in EcalUncalibratedRecHit
     _amplitudeError_second_EB[EBDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitudeError();  //----> only in EcalUncalibratedRecHit
@@ -340,6 +355,7 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   
   for (EcalUncalibratedRecHitCollection::const_iterator itrechit = eerechits_second->begin(); itrechit != eerechits_second->end(); itrechit++ ) {
+    _time_second_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->jitter();  //----> only in EcalUncalibratedRecHit
     _amplitude_second_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitude();  //----> only in EcalUncalibratedRecHit
     _chi2_second_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->chi2();  //----> only in EcalUncalibratedRecHit
     _amplitudeError_second_EE[EEDetId(itrechit->id()).hashedIndex()] =  itrechit->amplitudeError();  //----> only in EcalUncalibratedRecHit
