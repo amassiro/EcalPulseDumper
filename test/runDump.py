@@ -44,7 +44,22 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 
 
 # 2021 ...
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2021_realistic', '')
+#process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2021_realistic', '')
+#
+#
+
+process.GlobalTag = GlobalTag(process.GlobalTag, '111X_dataRun3_Prompt_v5', '') # ---> this is MC: phase1_2021_realistic
+#https://github.com/cms-sw/cmssw/blob/CMSSW_11_1_X/Configuration/AlCa/python/autoCond.py
+
+process.GlobalTag.toGet = cms.VPSet(
+              cms.PSet(record = cms.string("EcalPedestalsRcd"),
+                       tag =  cms.string("EcalPedestals_hlt"),
+                       connect = cms.string('frontier://FrontierProd/CMS_CONDITIONS')
+                       ),
+)
+
+
+
 
 process.PulseTreeProducer = cms.EDAnalyzer('PulseTreeProducer',
                             EcalUncalibRecHitsEBCollection = cms.InputTag("ecalMultiFitUncalibRecHit",  "EcalUncalibRecHitsEB"),
