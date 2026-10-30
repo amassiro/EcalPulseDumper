@@ -48,3 +48,25 @@ Apply the weights (from EcalWeights/LocalCreateWeightsPhase2.cxx):
 
     root -l 'ApplyWeights.cxx("samples.root", "weights_TB2025_v1.txt")'
 
+Phase-2 RelVal (TB2025 pulse shape, private production):
+
+    dasgoclient --query "dataset dataset=/RelValSingleEFlatPt2To100/treis-RelValSingleEFlatPt2To100_nopu_ecal_612wf_step*2025ps*/USER instance=prod/phys03"
+    /RelValSingleEFlatPt2To100/treis-RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps-afa0981336aeeaf41d23e9ebb0443183/USER   (DIGI, input of the dumper)
+    /RelValSingleEFlatPt2To100/treis-RelValSingleEFlatPt2To100_nopu_ecal_612wf_step3_2025ps-b49fb8a585f39349419567fb838b1c00/USER   (RECO)
+
+Test on one file:
+
+    voms-proxy-init --voms cms
+    dasgoclient --query "file dataset=/RelValSingleEFlatPt2To100/treis-RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps-afa0981336aeeaf41d23e9ebb0443183/USER instance=prod/phys03" | head -1
+    edmDumpEventContent root://cms-xrd-global.cern.ch//store/user/...  | grep -i ecal
+    cmsRun runSamplesDump.py inputFiles=root://cms-xrd-global.cern.ch//store/user/... outputFile=samples.root maxEvents=100 runWeights=True
+
+Where:
+
+    runWeights = rerun ecalUncalibRecHitPhase2 (CMSSW default weights) on the digis and dump amplitude_cmssw, time_cmssw
+
+Crab:
+
+    source /cvmfs/cms.cern.ch/crab3/crab.sh
+    crab submit -c crab_SamplesDump.py
+

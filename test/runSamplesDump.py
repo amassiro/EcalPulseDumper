@@ -14,6 +14,11 @@ options.register ('rechitTag',
                   VarParsing.multiplicity.singleton,
                   VarParsing.varType.string,
                   "EcalUncalibRecHitCollection EB input tag, e.g. ecalUncalibRecHitPhase2:EcalUncalibRecHitsEB (empty = not dumped)")
+options.register ('runWeights',
+                  False,
+                  VarParsing.multiplicity.singleton,
+                  VarParsing.varType.bool,
+                  "rerun ecalUncalibRecHitPhase2 (CMSSW weights) on the digis and dump its amplitude and time")
 options.register ('minAmplitude',
                   0,
                   VarParsing.multiplicity.singleton,
@@ -47,6 +52,15 @@ process.source = cms.Source("PoolSource",
                                 )
 
 process.SamplesTreeProducer_step = cms.Path(process.SamplesTreeProducer)
+
+#
+# rerun the CMSSW phase-2 weights on the digis (no EventSetup needed, weights hardcoded in the producer)
+#
+if options.runWeights:
+  process.load('RecoLocalCalo.EcalRecProducers.ecalUncalibRecHitPhase2_cfi')
+  process.ecalUncalibRecHitPhase2.BarrelDigis = cms.InputTag(options.digiTag)
+  process.SamplesTreeProducer.EcalUncalibRecHitsEBCollection = cms.InputTag('ecalUncalibRecHitPhase2', 'EcalUncalibRecHitsEB')
+  process.SamplesTreeProducer_step = cms.Path(process.ecalUncalibRecHitPhase2 * process.SamplesTreeProducer)
 
 process.schedule = cms.Schedule(
                                 process.SamplesTreeProducer_step,
