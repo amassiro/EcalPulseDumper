@@ -95,6 +95,7 @@ private:
   
 //   edm::ESHandle<EcalPedestals> _peds;
 //   edm::ESGetToken<EcalPedestals, EcalPedestalsRcd> _pedsToken;
+  edm::ESGetToken<EcalPedestals, EcalPedestalsRcd> _pedsToken;
   
   const EcalPedestals* _peds;
   
@@ -171,6 +172,7 @@ PulseTreeProducer::PulseTreeProducer(const edm::ParameterSet& iConfig) //,  edm:
   
   
 //   _pedsToken = myConsumesCollector.esConsumes<EcalPedestals, EcalPedestalsRcd>();
+  _pedsToken = esConsumes<EcalPedestals, EcalPedestalsRcd>();
   
   _outTree = fs->make<TTree>("tree","tree");
   
@@ -238,9 +240,10 @@ PulseTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   
   
   //---- pedestals
-  edm::ESHandle< EcalPedestals > ecalPedestals;
-  iSetup.get<EcalPedestalsRcd>().get(ecalPedestals);
-  _peds = ecalPedestals.product();
+//   edm::ESHandle< EcalPedestals > ecalPedestals;
+//   iSetup.get<EcalPedestalsRcd>().get(ecalPedestals);
+//   _peds = ecalPedestals.product();
+  _peds = &iSetup.getData(_pedsToken);
   
   
   
