@@ -24,3 +24,5 @@ Phase-2
 
 
     cmsRun runSamplesDump.py inputFiles=file:/store/user/treis/RelValSingleEFlatPt2To100/RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps/261009_085711/0000/step2_3.root outputFile=/tmp/amassiro/samples.root
+
+    cmsRun runSamplesDump.py inputFiles=file:/eos/cms/store/user/treis/RelValSingleEFlatPt2To100/RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps/261009_085711/0000/step2_3.root outputFile=/tmp/amassiro/samples.root
