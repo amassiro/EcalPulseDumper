@@ -4,6 +4,7 @@ Where:
 
     /afs/cern.ch/user/a/amassiro/work/ECAL/GPU/onGPU/24Jun2021/CMSSW_11_3_0_pre5/src/ECALValidation
     /afs/cern.ch/user/a/amassiro/work/ECAL/Pulses/CMSSW_15_0_22/src/ECALValidation/EcalPulseDumper
+    /afs/cern.ch/user/a/amassiro/work/ECAL/Pulses/CMSSW_20_1_0_pre3/src/ECALValidation/EcalPulseDumper
 
 To install:
 
