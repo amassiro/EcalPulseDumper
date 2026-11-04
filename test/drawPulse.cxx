@@ -65,6 +65,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 
     TMultiGraph* mg = new TMultiGraph ();
     gr_g10->SetMarkerStyle(20);
+    gr_g10->SetMarkerColor(kRed);
     gr_g1 ->SetMarkerStyle(24);
     gr_g1 ->SetMarkerColor(kRed);
     if (gr_g10->GetN()) mg->Add(gr_g10, "P");
