@@ -10,7 +10,7 @@
 //   root -l 'drawPulse.cxx("samples.root", 10, 100, -1, 50)'
 //
 
-void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iphi_sel = 1, int iEvent_sel = -1, float minAmplitude = 50) {
+void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iphi_sel = 1, int iEvent_sel = -1, float minAmplitude = 0) {
 
   const int nSamples = 16;
   const float sampleTime = 6.25; // ns
