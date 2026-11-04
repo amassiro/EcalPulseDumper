@@ -2,7 +2,7 @@
 // Draw the pulse (16 samples, 6.25 ns) of one crystal from the tree of SamplesTreeProducer
 //
 //   iEvent >= 0: raw ADC of that event (full markers = gain x10, open markers = gain x1)
-//   iEvent  < 0: all events overlaid, ADC / ADC[5], only pulses with ADC[5] - ADC[0] > minAmplitude
+//   iEvent  < 0: all events overlaid, ADC / ADC[5], only pulses with ADC[5] > minAmplitude
 //                red points = mean pulse, error bars = rms (TProfile option "s"), also printed per sample
 //
 // Run:
@@ -96,7 +96,8 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 //         float value = adc[iDigi*nSamples + iSample] - pedestal;
 //         if (value > maximum) maximum = value;
 //       }
-      if (maximum <= 0 || maximum - pedestal <= minAmplitude) continue;
+      if (maximum <= 0 || maximum <= minAmplitude) continue;
+//       if (maximum <= 0 || maximum - pedestal <= minAmplitude) continue;
 
       nPulses++;
       for (int iSample = 0; iSample < nSamples; iSample++) {
@@ -107,7 +108,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
       }
     }
   }
-  std::cout << " " << title << ": " << nPulses << " pulses with amplitude > " << minAmplitude << " ADC" << std::endl;
+  std::cout << " " << title << ": " << nPulses << " pulses with ADC[5] > " << minAmplitude << " ADC" << std::endl;
 
   //---- mean and rms per sample
   std::cout << " sample   time [ns]   mean     rms" << std::endl;
