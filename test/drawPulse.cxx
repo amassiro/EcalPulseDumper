@@ -2,7 +2,7 @@
 // Draw the pulse (16 samples, 6.25 ns) of one crystal from the tree of SamplesTreeProducer
 //
 //   iEvent >= 0: raw ADC of that event (full markers = gain x10, open markers = gain x1)
-//   iEvent  < 0: all events overlaid, (ADC - ADC[0]) / max, only pulses with max - ADC[0] > minAmplitude
+//   iEvent  < 0: all events overlaid, (ADC - ADC[0]) / (ADC[5] - ADC[0]), only pulses with ADC[5] - ADC[0] > minAmplitude
 //                red points = mean pulse, error bars = rms (TProfile option "s"), also printed per sample
 //
 // Run:
@@ -14,6 +14,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 
   const int nSamples = 16;
   const float sampleTime = 6.25; // ns
+  const int iSampleMax = 5;       // sample at the peak (phase-2 simulation), counting from 0
 
   TFile* _file0 = TFile::Open(inputFile.c_str());
   TTree* tree = (TTree*) _file0->Get("SamplesTreeProducer/tree");
@@ -75,8 +76,8 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
     return;
   }
 
-  //---- all events overlaid, normalized to the maximum
-  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];(ADC - ADC[0]) / max", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 120, -0.1, 1.1);
+  //---- all events overlaid, normalized to the sample at the peak
+  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];(ADC - ADC[0]) / (ADC[5] - ADC[0])", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 120, -0.1, 1.1);
   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, "s");
 
   int nPulses = 0;
@@ -87,12 +88,14 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
       if (ieta[iDigi] != ieta_sel || iphi[iDigi] != iphi_sel) continue;
 
       float pedestal = adc[iDigi*nSamples];
-      float maximum = 0;
-      for (int iSample = 0; iSample < nSamples; iSample++) {
-        float value = adc[iDigi*nSamples + iSample] - pedestal;
-        if (value > maximum) maximum = value;
-      }
-      if (maximum <= minAmplitude) continue;
+      //---- normalize to the sample at the peak
+      float maximum = adc[iDigi*nSamples + iSampleMax] - pedestal;
+//       float maximum = 0;
+//       for (int iSample = 0; iSample < nSamples; iSample++) {
+//         float value = adc[iDigi*nSamples + iSample] - pedestal;
+//         if (value > maximum) maximum = value;
+//       }
+      if (maximum <= 0 || maximum <= minAmplitude) continue;
 
       nPulses++;
       for (int iSample = 0; iSample < nSamples; iSample++) {
