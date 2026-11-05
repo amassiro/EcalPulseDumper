@@ -111,7 +111,7 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
   //---- amplitude + pedestal
   TGraph* gr_amplitude = new TGraph ();
   //---- slightly shifted to the right of sample 5, to be visible
-  gr_amplitude->SetPoint(0, iSampleMax*sampleTime + 1.5, amplitude + pedestal);
+  gr_amplitude->SetPoint(0, iSampleMax*sampleTime + 3., amplitude + pedestal);
   gr_amplitude->SetMarkerStyle(21);
   gr_amplitude->SetMarkerSize(1.5);
   gr_amplitude->SetMarkerColor(kBlue);
