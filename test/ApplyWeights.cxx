@@ -1,19 +1,32 @@
 //
-// Apply the amplitude weights per ieta (from LocalCreateWeightsFromPulses.cxx) to one pulse
-// of one crystal (ieta, iphi) from the tree of SamplesTreeProducer
+// Apply the amplitude weights per ieta (from LocalCreateWeightsFromPulses.cxx) to the pulses
+// from the tree of SamplesTreeProducer, one pulse at a time
 //
 //   weights file: "# ieta weights", then one line per ieta: ieta w[0] ... w[15]
 //   pedestal  = (ADC[0] + ADC[1]) / 2
 //   amplitude = sum_i w[i] * ADC[i]
-//   event: iEvent >= 0 that event, iEvent < 0 first event with ADC[5] - pedestal > threshold
-//   then buttons "-" and "+" in a separate control bar (TControlBar, as in the TMVA GUI)
-//   to show the previous / next event with ADC[5] - pedestal > threshold
+//   pulses: ADC[5] - pedestal > threshold
+//
+//   crystal selection, 0 = not fixed (sequential):
+//     ieta = 0, iphi = 0  -->  all crystals, ieta from -85 to 85, and for each ieta iphi from 1 to 360
+//     ieta fixed          -->  that ieta, iphi sequential
+//     ieta = 0, iphi fixed -->  that iphi, ieta sequential
+//   for each crystal all its events with a pulse, then the next crystal
+//   iEvent >= 0: start from the first pulse in that event
+//
+//   buttons "-" and "+" in a separate control bar (TControlBar, as in the TMVA GUI)
+//   to show the previous / next pulse
 //
 // Plot: ADC vs time, dashed line = pedestal, blue square = amplitude + pedestal (next to sample 5)
 //
+// NB: all the pulses are found in one loop over the tree at the beginning,
+//     keep the threshold high enough (with threshold ~ 0 all the 61200 crystals x events are kept)
+//
 // Run:
-//   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", -54, 119, 50)'
-//   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", -54, 119, 50, 3)'
+//   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50)'
+//   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50, -54)'
+//   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50, 0, 119)'
+//   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50, -54, 119, 3)'
 //
 
 //---- global, used by the buttons
@@ -23,11 +36,18 @@ const int aw_iSampleMax = 5;       // sample at the peak (phase-2 simulation), c
 
 TTree* aw_tree = nullptr;
 TCanvas* aw_cc = nullptr;
-std::vector<float> aw_weights;
-int aw_ieta_sel;
-int aw_iphi_sel;
+std::map<int, std::vector<float> > aw_weights;
 float aw_threshold;
-int aw_iEventCurrent = -1;
+
+//---- list of the pulses, ordered by ieta, iphi, event
+struct aw_pulse {
+  int ieta;
+  int iphi;
+  int iEvent;
+  int iDigi;
+};
+std::vector<aw_pulse> aw_pulses;
+int aw_iPulseCurrent = -1;
 
 int aw_nDigis;
 int      aw_ieta[61200];
@@ -36,38 +56,22 @@ UShort_t aw_adc[61200*16];
 UChar_t  aw_gain[61200*16];
 
 
-//---- find the digi of the selected crystal with a pulse, from iEventStart forward (direction = 1) or backward (direction = -1)
-//---- onlyOneEvent = look only at iEventStart. Return the event, -1 if not found
-int ApplyWeightsFind(int iEventStart, int direction, bool onlyOneEvent, int& iDigiFound) {
-  int iEventEnd = onlyOneEvent ? iEventStart + direction : (direction > 0 ? aw_tree->GetEntries() : -1);
-  for (int iEvent = iEventStart; iEvent != iEventEnd && iEvent >= 0 && iEvent < aw_tree->GetEntries(); iEvent += direction) {
-    aw_tree->GetEntry(iEvent);
-    for (int iDigi = 0; iDigi < aw_nDigis; iDigi++) {
-      if (aw_ieta[iDigi] != aw_ieta_sel || aw_iphi[iDigi] != aw_iphi_sel) continue;
-      float pedestal = 0.5 * (aw_adc[iDigi*aw_nSamples] + aw_adc[iDigi*aw_nSamples + 1]);
-      if (aw_adc[iDigi*aw_nSamples + aw_iSampleMax] - pedestal > aw_threshold) {
-        iDigiFound = iDigi;
-        return iEvent;
-      }
-      break;
-    }
-  }
-  return -1;
-}
-
-
-//---- draw the pulse of event iEvent (already found with ApplyWeightsFind, tree entry loaded)
-void ApplyWeightsDraw(int iEvent, int iDigi) {
+//---- draw the pulse number iPulse of the list
+void ApplyWeightsDraw(int iPulse) {
 
   const int nSamples = aw_nSamples;
-  TString title = Form("ieta = %d, iphi = %d", aw_ieta_sel, aw_iphi_sel);
+  aw_pulse pulse = aw_pulses[iPulse];
+  aw_tree->GetEntry(pulse.iEvent);
+  int iDigi = pulse.iDigi;
+  TString title = Form("ieta = %d, iphi = %d", pulse.ieta, pulse.iphi);
 
-  //---- pedestal and amplitude with the weights
+  //---- pedestal and amplitude with the weights of this ieta
+  std::vector<float>& weights = aw_weights[pulse.ieta];
   float pedestal = 0.5 * (aw_adc[iDigi*nSamples] + aw_adc[iDigi*nSamples + 1]);
   float amplitude = 0;
-  for (int iSample = 0; iSample < nSamples; iSample++) amplitude += aw_weights[iSample] * aw_adc[iDigi*nSamples + iSample];
+  for (int iSample = 0; iSample < nSamples; iSample++) amplitude += weights[iSample] * aw_adc[iDigi*nSamples + iSample];
 
-  std::cout << " " << title << ", event " << iEvent << std::endl;
+  std::cout << " pulse " << iPulse + 1 << " / " << aw_pulses.size() << ": " << title << ", event " << pulse.iEvent << std::endl;
   std::cout << "   pedestal           = " << pedestal << std::endl;
   std::cout << "   ADC[5] - pedestal  = " << aw_adc[iDigi*nSamples + aw_iSampleMax] - pedestal << std::endl;
   std::cout << "   amplitude weights  = " << amplitude << std::endl;
@@ -78,7 +82,7 @@ void ApplyWeightsDraw(int iEvent, int iDigi) {
   for (int iSample = 0; iSample < nSamples; iSample++) gr_pulse->SetPoint(iSample, iSample*aw_sampleTime, aw_adc[iDigi*nSamples + iSample]);
   gr_pulse->SetMarkerStyle(20);
   gr_pulse->SetMarkerColor(kRed);
-  gr_pulse->SetTitle(title + Form(", event %d;time [ns];ADC", iEvent));
+  gr_pulse->SetTitle(title + Form(", event %d;time [ns];ADC", pulse.iEvent));
   gr_pulse->SetMinimum(0);
 
   //---- amplitude + pedestal
@@ -111,26 +115,24 @@ void ApplyWeightsDraw(int iEvent, int iDigi) {
 }
 
 
-//---- called by the buttons: direction = 1 next event, -1 previous event
+//---- called by the buttons: direction = 1 next pulse, -1 previous pulse
 void ApplyWeightsMove(int direction) {
-  int iDigi = -1;
-  int iEvent = ApplyWeightsFind(aw_iEventCurrent + direction, direction, false, iDigi);
-  if (iEvent < 0) {
+  int iPulse = aw_iPulseCurrent + direction;
+  if (iPulse < 0 || iPulse >= int(aw_pulses.size())) {
     std::cout << " no " << (direction > 0 ? "next" : "previous") << " pulse with ADC[5] - pedestal > " << aw_threshold << std::endl;
     return;
   }
-  aw_iEventCurrent = iEvent;
-  ApplyWeightsDraw(iEvent, iDigi);
+  aw_iPulseCurrent = iPulse;
+  ApplyWeightsDraw(iPulse);
 }
 
 
-void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFile = "weights_pulses_all.txt", int ieta_sel = 1, int iphi_sel = 1, float threshold = 50, int iEvent_sel = -1) {
+void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFile = "weights_pulses_all.txt", float threshold = 50, int ieta_sel = 0, int iphi_sel = 0, int iEvent_sel = -1) {
 
-  aw_ieta_sel = ieta_sel;
-  aw_iphi_sel = iphi_sel;
+  const int nSamples = aw_nSamples;
   aw_threshold = threshold;
 
-  //---- read the weights of the selected ieta
+  //---- read the weights, all ieta
   aw_weights.clear();
   std::ifstream file (weightsFile.c_str());
   if (!file.is_open()) {
@@ -143,12 +145,14 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
     std::istringstream iss (line);
     int ieta;
     iss >> ieta;
-    if (ieta != ieta_sel) continue;
+    std::vector<float> weights;
     float value;
-    while (iss >> value) aw_weights.push_back(value);
+    while (iss >> value) weights.push_back(value);
+    if (weights.size() == nSamples) aw_weights[ieta] = weights;
   }
   file.close();
-  if (aw_weights.size() != aw_nSamples) {
+  std::cout << " read weights for " << aw_weights.size() << " ieta from " << weightsFile << std::endl;
+  if (ieta_sel != 0 && aw_weights.find(ieta_sel) == aw_weights.end()) {
     std::cout << " Error: weights for ieta = " << ieta_sel << " not found in " << weightsFile << std::endl;
     return;
   }
@@ -170,22 +174,53 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
   aw_tree->SetBranchAddress("adc",    aw_adc);
   aw_tree->SetBranchAddress("gain",   aw_gain);
 
-  //---- first event
-  int iDigi = -1;
-  int iEvent = ApplyWeightsFind((iEvent_sel >= 0) ? iEvent_sel : 0, 1, (iEvent_sel >= 0), iDigi);
-  if (iEvent < 0) {
-    std::cout << " no pulse with ADC[5] - pedestal > " << threshold << " for ieta = " << ieta_sel << ", iphi = " << iphi_sel << std::endl;
-    return;
+  //---- find all the pulses of the selected crystals, one loop over the tree
+  aw_pulses.clear();
+  std::cout << " looking for the pulses ..." << std::endl;
+  for (int iEvent = 0; iEvent < aw_tree->GetEntries(); iEvent++) {
+    aw_tree->GetEntry(iEvent);
+    for (int iDigi = 0; iDigi < aw_nDigis; iDigi++) {
+      if (ieta_sel != 0 && aw_ieta[iDigi] != ieta_sel) continue;
+      if (iphi_sel != 0 && aw_iphi[iDigi] != iphi_sel) continue;
+      if (aw_weights.find(aw_ieta[iDigi]) == aw_weights.end()) continue;
+      float pedestal = 0.5 * (aw_adc[iDigi*nSamples] + aw_adc[iDigi*nSamples + 1]);
+      if (aw_adc[iDigi*nSamples + aw_iSampleMax] - pedestal <= threshold) continue;
+      aw_pulses.push_back({aw_ieta[iDigi], aw_iphi[iDigi], iEvent, iDigi});
+    }
   }
-  aw_iEventCurrent = iEvent;
+
+  //---- order: ieta (from -85), iphi (from 1), event
+  std::sort(aw_pulses.begin(), aw_pulses.end(), [](const aw_pulse& a, const aw_pulse& b) {
+    if (a.ieta != b.ieta) return a.ieta < b.ieta;
+    if (a.iphi != b.iphi) return a.iphi < b.iphi;
+    return a.iEvent < b.iEvent;
+  });
+  std::cout << " found " << aw_pulses.size() << " pulses with ADC[5] - pedestal > " << threshold << std::endl;
+  if (aw_pulses.size() == 0) return;
+
+  //---- first pulse: the first one, or the first one in event iEvent_sel
+  aw_iPulseCurrent = 0;
+  if (iEvent_sel >= 0) {
+    aw_iPulseCurrent = -1;
+    for (int iPulse = 0; iPulse < int(aw_pulses.size()); iPulse++) {
+      if (aw_pulses[iPulse].iEvent == iEvent_sel) {
+        aw_iPulseCurrent = iPulse;
+        break;
+      }
+    }
+    if (aw_iPulseCurrent < 0) {
+      std::cout << " no pulse in event " << iEvent_sel << ", start from the first one" << std::endl;
+      aw_iPulseCurrent = 0;
+    }
+  }
 
   aw_cc = new TCanvas ("cc", "", 800, 600);
-  ApplyWeightsDraw(iEvent, iDigi);
+  ApplyWeightsDraw(aw_iPulseCurrent);
 
   //---- control bar with the buttons, separate window as in the TMVA GUI
   TControlBar* bar = new TControlBar ("horizontal", "ApplyWeights", 0, 0);
-  bar->AddButton("-", "ApplyWeightsMove(-1)", "previous event with a pulse");
-  bar->AddButton("+", "ApplyWeightsMove(1)",  "next event with a pulse");
+  bar->AddButton("-", "ApplyWeightsMove(-1)", "previous pulse");
+  bar->AddButton("+", "ApplyWeightsMove(1)",  "next pulse");
   bar->Show();
 
 }
