@@ -50,6 +50,10 @@ Weights from the mean pulses (ieta = 0 means all ieta):
 
     root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
 
+Average of the weights over the ieta rings, in average_weights_pulses_all.txt, and distributions of w[0] ... w[15] in pulses_output/weights_distributions.png (.root):
+
+    root -l 'averageWeights.cxx("weights_pulses_all.txt")'
+
 Apply the weights:
 
     root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50, -54, 119)'
