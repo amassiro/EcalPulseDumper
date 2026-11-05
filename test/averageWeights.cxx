@@ -100,6 +100,7 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
     int decimals = (stddev > 0) ? std::max(0, 1 - int(std::floor(std::log10(stddev)))) : 4;
     TPaveText* stat = new TPaveText (0.55, 0.70, 0.98, 0.92, "NDC");
     stat->SetFillColor(kWhite);
+    stat->SetBorderSize(1);
     stat->SetTextAlign(12);
     stat->SetTextSize(0.07);
     stat->SetTextFont(42);
