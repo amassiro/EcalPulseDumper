@@ -7,7 +7,7 @@
 //   amplitude = sum_i w[i] * ADC[i]
 //   event: iEvent >= 0 that event, iEvent < 0 first event with ADC[5] - pedestal > threshold
 //
-// Plot: ADC vs time, dashed line = pedestal, blue square = amplitude + pedestal (at sample 5)
+// Plot: ADC vs time, dashed line = pedestal, blue square = amplitude + pedestal (next to sample 5)
 //
 // Run:
 //   root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", -54, 119, 50)'
@@ -110,7 +110,8 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
 
   //---- amplitude + pedestal
   TGraph* gr_amplitude = new TGraph ();
-  gr_amplitude->SetPoint(0, iSampleMax*sampleTime, amplitude + pedestal);
+  //---- slightly shifted to the right of sample 5, to be visible
+  gr_amplitude->SetPoint(0, iSampleMax*sampleTime + 1.5, amplitude + pedestal);
   gr_amplitude->SetMarkerStyle(21);
   gr_amplitude->SetMarkerSize(1.5);
   gr_amplitude->SetMarkerColor(kBlue);
