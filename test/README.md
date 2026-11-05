@@ -54,4 +54,3 @@ Apply the weights:
 
     root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt")'
 
-NB: with a ROOT older than the one used to write samples.root (e.g. 6.25 vs 6.36) many harmless "Error in <TList::Clear>" messages appear: use the ROOT of CMSSW_20_1_0_pre3 (cmsenv).
