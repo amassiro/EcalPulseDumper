@@ -50,6 +50,10 @@ Weights from the mean pulses (ieta = 0 means all ieta):
 
     root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
 
+Weights per crystal, from samples.root (threshold on ADC[5] - pedestal, only crystals with at least 3 pulses, their number is printed), output "ieta iphi w[0] ... w[15]":
+
+    root -l -q 'LocalCreateWeightsFromPulsesAll.cxx("samples.root", 50, "weights_pulses_crystals.txt")'
+
 Average of the weights over the ieta rings, in average_weights_pulses_all.txt, and distributions of w[0] ... w[15] in pulses_output/weights_distributions.png (.root):
 
     root -l 'averageWeights.cxx("weights_pulses_all.txt")'
