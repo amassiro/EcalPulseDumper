@@ -218,9 +218,10 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
   ApplyWeightsDraw(aw_iPulseCurrent);
 
   //---- control bar with the buttons, separate window as in the TMVA GUI
-  TControlBar* bar = new TControlBar ("horizontal", "ApplyWeights", 0, 0);
-  bar->AddButton("-", "ApplyWeightsMove(-1)", "previous pulse");
+  TControlBar* bar = new TControlBar ("vertical", "ApplyWeights", 0, 0);
+  bar->SetButtonWidth(200);
   bar->AddButton("+", "ApplyWeightsMove(1)",  "next pulse");
+  bar->AddButton("-", "ApplyWeightsMove(-1)", "previous pulse");
   bar->Show();
 
 }
