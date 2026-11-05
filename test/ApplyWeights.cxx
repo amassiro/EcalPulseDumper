@@ -6,7 +6,8 @@
 //   pedestal  = (ADC[0] + ADC[1]) / 2
 //   amplitude = sum_i w[i] * ADC[i]
 //   event: iEvent >= 0 that event, iEvent < 0 first event with ADC[5] - pedestal > threshold
-//   then buttons "-" and "+" in the canvas to show the previous / next event with ADC[5] - pedestal > threshold
+//   then buttons "-" and "+" in a separate control bar (TControlBar, as in the TMVA GUI)
+//   to show the previous / next event with ADC[5] - pedestal > threshold
 //
 // Plot: ADC vs time, dashed line = pedestal, blue square = amplitude + pedestal (next to sample 5)
 //
@@ -22,7 +23,6 @@ const int aw_iSampleMax = 5;       // sample at the peak (phase-2 simulation), c
 
 TTree* aw_tree = nullptr;
 TCanvas* aw_cc = nullptr;
-TPad* aw_pad = nullptr;
 std::vector<float> aw_weights;
 int aw_ieta_sel;
 int aw_iphi_sel;
@@ -89,8 +89,8 @@ void ApplyWeightsDraw(int iEvent, int iDigi) {
   gr_amplitude->SetMarkerSize(1.5);
   gr_amplitude->SetMarkerColor(kBlue);
 
-  aw_pad->Clear();
-  aw_pad->cd();
+  aw_cc->Clear();
+  aw_cc->cd();
   gr_pulse->Draw("AP");
   gr_amplitude->Draw("P same");
 
@@ -106,7 +106,6 @@ void ApplyWeightsDraw(int iEvent, int iDigi) {
   leg->AddEntry(line_pedestal, Form("pedestal = %.1f", pedestal), "l");
   leg->Draw();
 
-  aw_pad->Modified();
   aw_cc->Modified();
   aw_cc->Update();
 }
@@ -180,20 +179,14 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
   }
   aw_iEventCurrent = iEvent;
 
-  //---- canvas: pad for the plot, buttons below
-  aw_cc = new TCanvas ("cc", "", 800, 650);
-  aw_pad = new TPad ("pad", "", 0., 0.08, 1., 1.);
-  aw_pad->Draw();
-
-  aw_cc->cd();
-  TButton* button_previous = new TButton ("-", "ApplyWeightsMove(-1)", 0.40, 0.01, 0.49, 0.07);
-  button_previous->SetTextSize(0.6);
-  button_previous->Draw();
-  TButton* button_next = new TButton ("+", "ApplyWeightsMove(1)", 0.51, 0.01, 0.60, 0.07);
-  button_next->SetTextSize(0.6);
-  button_next->Draw();
-
+  aw_cc = new TCanvas ("cc", "", 800, 600);
   ApplyWeightsDraw(iEvent, iDigi);
+
+  //---- control bar with the buttons, separate window as in the TMVA GUI
+  TControlBar* bar = new TControlBar ("horizontal", "ApplyWeights", 0, 0);
+  bar->AddButton("-", "ApplyWeightsMove(-1)", "previous event with a pulse");
+  bar->AddButton("+", "ApplyWeightsMove(1)",  "next event with a pulse");
+  bar->Show();
 
 }
 
