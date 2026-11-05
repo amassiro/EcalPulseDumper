@@ -4,6 +4,7 @@
 //   iEvent >= 0: raw ADC of that event (full markers = gain x10, open markers = gain x1)
 //   iEvent  < 0: all events overlaid, ADC / ADC[5], only pulses with ADC[5] > minAmplitude
 //                red points = mean pulse, error bars = uncertainty on the mean, also printed per sample
+//                second canvas: TH2F of all the pulses, ADC / ADC[5] vs time, with the mean on top
 //
 // Run:
 //   root -l 'drawPulse.cxx("samples.root", 10, 100, 0)'
@@ -80,6 +81,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 //   TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];ADC / ADC[5]", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 120, -0.1, 1.1);
 //   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, "s");
   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime);
+  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];ADC / ADC[5]", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 140, -0.2, 1.2);
 
   int nPulses = 0;
   for (int iEvent = 0; iEvent < tree->GetEntries(); iEvent++) {
@@ -106,6 +108,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 //         float value = (adc[iDigi*nSamples + iSample] - pedestal) / maximum;
 //         h_pulse->Fill(iSample*sampleTime, value);
         p_pulse->Fill(iSample*sampleTime, value);
+        h_pulse->Fill(iSample*sampleTime, value);
       }
     }
   }
@@ -136,6 +139,13 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 
   TLegend* leg = new TLegend (0.60, 0.80, 0.88, 0.88);
   leg->AddEntry(gr_mean, Form("mean, %d pulses", nPulses), "lp");
+  leg->Draw();
+
+  //---- second canvas: all the pulses (TH2F) with the mean on top
+  TCanvas* cc_2d = new TCanvas ("cc_2d", "", 800, 600);
+  h_pulse->SetStats(0);
+  h_pulse->Draw("colz");
+  gr_mean->Draw("P same");
   leg->Draw();
 
 }

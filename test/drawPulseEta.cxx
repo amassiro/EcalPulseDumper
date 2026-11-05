@@ -4,6 +4,7 @@
 //
 //   all events and all iphi overlaid, ADC / ADC[5], only pulses with ADC[5] > minAmplitude
 //   red points = mean pulse, error bars = uncertainty on the mean, also printed per sample
+//   second canvas: TH2F of all the pulses, ADC / ADC[5] vs time, with the mean on top
 //
 // Run:
 //   root -l 'drawPulseEta.cxx("samples.root", 10, 50)'
@@ -44,6 +45,7 @@ void drawPulseEta(std::string inputFile = "samples.root", int ieta_sel = 1, floa
 
   //---- all events and all iphi overlaid, normalized to the sample at the peak
   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime);
+  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];ADC / ADC[5]", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 140, -0.2, 1.2);
 
   int nPulses = 0;
   std::set<int> iphi_used;
@@ -62,6 +64,7 @@ void drawPulseEta(std::string inputFile = "samples.root", int ieta_sel = 1, floa
       for (int iSample = 0; iSample < nSamples; iSample++) {
         float value = adc[iDigi*nSamples + iSample] / maximum;
         p_pulse->Fill(iSample*sampleTime, value);
+        h_pulse->Fill(iSample*sampleTime, value);
       }
     }
   }
@@ -88,6 +91,13 @@ void drawPulseEta(std::string inputFile = "samples.root", int ieta_sel = 1, floa
 
   TLegend* leg = new TLegend (0.60, 0.80, 0.88, 0.88);
   leg->AddEntry(gr_mean, Form("mean, %d pulses", nPulses), "lp");
+  leg->Draw();
+
+  //---- second canvas: all the pulses (TH2F) with the mean on top
+  TCanvas* cc_2d = new TCanvas ("cc_2d", "", 800, 600);
+  h_pulse->SetStats(0);
+  h_pulse->Draw("colz");
+  gr_mean->Draw("P same");
   leg->Draw();
 
 }
