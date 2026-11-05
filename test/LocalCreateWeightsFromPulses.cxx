@@ -14,60 +14,26 @@
 //                                A f(t) + A dt f'(t) ~ A f(t + dt) --> dt > 0 means the pulse is earlier
 //   last col (doFitBaseline) --> 1 (baseline)
 //
-// ieta_sel = 0  --> mean of the pulses of all the ieta in the file
-// ieta_sel != 0 --> pulse of that ieta
-//
-// Output: weights in a text file, one line per parameter (amplitude, [amplitude*dt], [baseline]),
-//         same format as EcalWeights/LocalCreateWeightsPhase2.cxx (input of ApplyWeights.cxx)
+// ieta_sel != 0 --> weights for that ieta, one line per parameter (amplitude, [amplitude*dt], [baseline]),
+//                   same format as EcalWeights/LocalCreateWeightsPhase2.cxx (input of ApplyWeights.cxx)
+// ieta_sel = 0  --> weights for all the ieta in the file, one line per ieta and parameter:
+//                   ieta, parameter, w[0], ... , w[15]
 //
 // Run:
 //   root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
 //   root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", -54, "weights_pulses_ieta_m54.txt", true, true, true)'
 //
 
+const int nSamples = 16;
+const float samplingPeriod = 6.25;  // ns
 
-void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int ieta_sel = 0, std::string outputFile = "weights_pulses.txt", bool doFitBaseline = true, bool doFitTime = true, bool useNoiseCorrelation = false) {
 
-  std::cout << " Create phase-2 weights from the mean pulses: " << pulsesFile << ", ieta = " << ieta_sel << " (0 = all)" << std::endl;
-
-  const int nSamples = 16;
-  const float samplingPeriod = 6.25;  // ns
+//---- weights for one pulse shape, W = (C^T N^-1 C)^-1 C^T N^-1  (nParams x nSamples)
+TMatrixD computeWeights(std::vector<float>& pulseShape, std::vector<float>& pulseShapeDerivative, bool doFitBaseline, bool doFitTime, bool useNoiseCorrelation, double& det) {
 
   //---- noise correlation G10 from 2023 TB, as in SimCalorimetry/EcalSimProducers/python/ecalDigiParameters_Ph2_cff.py
   float noiseCorrelation[nSamples] = {1.0000, 0.6986, 0.3782, 0.2452, 0.2900, 0.3532, 0.3911, 0.3896,
                                       0.3892, 0.3842, 0.3796, 0.3711, 0.3763, 0.3791, 0.3867, 0.3820};
-
-  //---- read the pulses: ieta  ADC[0] ... ADC[15]
-  std::vector <float> pulseShape (nSamples, 0.);
-  int nPulses = 0;
-  std::ifstream file (pulsesFile.c_str());
-  if (!file.is_open()) {
-    std::cout << " Error: cannot open " << pulsesFile << std::endl;
-    return;
-  }
-  std::string line;
-  while (std::getline(file, line)) {
-    if (line.size() == 0 || line[0] == '#') continue;
-    std::istringstream iss (line);
-    int ieta;
-    iss >> ieta;
-    if (ieta_sel != 0 && ieta != ieta_sel) continue;
-    std::vector <float> values;
-    float value;
-    while (iss >> value) values.push_back(value);
-    if (int(values.size()) != nSamples) continue;
-    //---- skip empty rings (no pulses above threshold)
-    if (values[5] == 0) continue;
-    for (int iSample = 0; iSample < nSamples; iSample++) pulseShape[iSample] += values[iSample];
-    nPulses++;
-  }
-  file.close();
-  if (nPulses == 0) {
-    std::cout << " Error: no pulse found for ieta = " << ieta_sel << std::endl;
-    return;
-  }
-  for (int iSample = 0; iSample < nSamples; iSample++) pulseShape[iSample] /= nPulses;
-  std::cout << " used " << nPulses << " ieta" << std::endl;
 
   //---- derivative [1/ns] from a cubic spline through the samples
   double times[nSamples];
@@ -76,9 +42,9 @@ void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int iet
     times[iSample] = iSample * samplingPeriod;
     shape[iSample] = pulseShape[iSample];
   }
-  TSpline3* spline = new TSpline3 ("spline", times, shape, nSamples);
-  std::vector <float> pulseShapeDerivative;
-  for (int iSample = 0; iSample < nSamples; iSample++) pulseShapeDerivative.push_back(spline->Derivative(times[iSample]));
+  TSpline3 spline ("spline", times, shape, nSamples);
+  pulseShapeDerivative.clear();
+  for (int iSample = 0; iSample < nSamples; iSample++) pulseShapeDerivative.push_back(spline.Derivative(times[iSample]));
 
   int nParams = 1 + int(doFitBaseline) + int(doFitTime);
   int iParamTime     = doFitTime     ? 1           : -1;
@@ -101,18 +67,94 @@ void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int iet
       else                     noiseInverse(iRow, iColumn) = (iRow == iColumn) ? 1. : 0.;
     }
   }
-  double det = 0;
   noiseInverse.Invert(&det);
 
-  //---- W = (C^T N^-1 C)^-1 C^T N^-1   (nParams x nSamples)
   TMatrixD coefT (TMatrixD::kTransposed, coef);
   TMatrixD normal = coefT * noiseInverse * coef;
   normal.Invert(&det);
+  return normal * coefT * noiseInverse;
+}
+
+
+void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int ieta_sel = 0, std::string outputFile = "weights_pulses.txt", bool doFitBaseline = true, bool doFitTime = true, bool useNoiseCorrelation = false) {
+
+  std::cout << " Create phase-2 weights from the mean pulses: " << pulsesFile << ", ieta = " << ieta_sel << " (0 = all)" << std::endl;
+
+  int nParams = 1 + int(doFitBaseline) + int(doFitTime);
+  int iParamTime     = doFitTime     ? 1           : -1;
+  int iParamBaseline = doFitBaseline ? nParams - 1 : -1;
+
+  //---- read the pulses: ieta  ADC[0] ... ADC[15]
+  std::map <int, std::vector<float> > pulses;
+  std::ifstream file (pulsesFile.c_str());
+  if (!file.is_open()) {
+    std::cout << " Error: cannot open " << pulsesFile << std::endl;
+    return;
+  }
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.size() == 0 || line[0] == '#') continue;
+    std::istringstream iss (line);
+    int ieta;
+    iss >> ieta;
+    if (ieta_sel != 0 && ieta != ieta_sel) continue;
+    std::vector <float> values;
+    float value;
+    while (iss >> value) values.push_back(value);
+    if (int(values.size()) != nSamples) continue;
+    //---- skip empty rings (no pulses above threshold)
+    if (values[5] == 0) continue;
+    pulses[ieta] = values;
+  }
+  file.close();
+  if (pulses.size() == 0) {
+    std::cout << " Error: no pulse found for ieta = " << ieta_sel << std::endl;
+    return;
+  }
+
+  //---- all ieta: one line per ieta and parameter
+  if (ieta_sel == 0) {
+    std::ofstream out (outputFile.c_str());
+    out << "# pulses " << pulsesFile << " noiseCorrelation " << useNoiseCorrelation << std::endl;
+    out << "# ieta, parameter (0 = amplitude";
+    if (doFitTime)     out << ", " << iParamTime << " = amplitude*dt[ns]";
+    if (doFitBaseline) out << ", " << iParamBaseline << " = baseline";
+    out << "), w[0] ... w[" << nSamples-1 << "]" << std::endl;
+
+    for (auto& pulse : pulses) {
+      std::vector <float> pulseShapeDerivative;
+      double det = 0;
+      TMatrixD weights = computeWeights(pulse.second, pulseShapeDerivative, doFitBaseline, doFitTime, useNoiseCorrelation, det);
+      if (det == 0) {
+        std::cout << " Error: singular matrix for ieta = " << pulse.first << ", skipped" << std::endl;
+        continue;
+      }
+
+      //---- closure on the amplitude: weights x (pulse shape + 100)
+      double closure = 0;
+      for (int iSample = 0; iSample < nSamples; iSample++) closure += weights(0, iSample) * (pulse.second[iSample] + 100.);
+      std::cout << " ieta = " << std::setw(3) << pulse.first << "  closure amplitude = " << std::setprecision(5) << std::fixed << closure << std::endl;
+
+      for (int iParam = 0; iParam < nParams; iParam++) {
+        out << pulse.first << " " << iParam;
+        for (int iSample = 0; iSample < nSamples; iSample++) out << " " << std::setprecision(7) << weights(iParam, iSample);
+        out << std::endl;
+      }
+    }
+    out.close();
+    std::cout << std::endl << " written: " << outputFile << " (" << pulses.size() << " ieta)" << std::endl;
+    return;
+  }
+
+  //---- one ieta
+  std::vector <float> pulseShape = pulses.begin()->second;
+  std::vector <float> pulseShapeDerivative;
+  double det = 0;
+  TMatrixD weights = computeWeights(pulseShape, pulseShapeDerivative, doFitBaseline, doFitTime, useNoiseCorrelation, det);
   if (det == 0) {
     std::cout << " Error: singular matrix, check the pulse shape" << std::endl;
     return;
   }
-  TMatrixD weights = normal * coefT * noiseInverse;
 
   //---- print
   std::cout << " noise correlation = " << useNoiseCorrelation << std::endl;
@@ -158,7 +200,7 @@ void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int iet
 
   //---- write weights to file
   std::ofstream out (outputFile.c_str());
-  out << "# pulses " << pulsesFile << " ieta " << ieta_sel << " (0 = all) noiseCorrelation " << useNoiseCorrelation << std::endl;
+  out << "# pulses " << pulsesFile << " ieta " << ieta_sel << " noiseCorrelation " << useNoiseCorrelation << std::endl;
   out << "# rows: amplitude";
   if (doFitTime)     out << ", amplitude*dt[ns]";
   if (doFitBaseline) out << ", baseline";
