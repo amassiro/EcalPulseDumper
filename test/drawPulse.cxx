@@ -1,10 +1,12 @@
 //
 // Draw the pulse (16 samples, 6.25 ns) of one crystal from the tree of SamplesTreeProducer
 //
-//   iEvent >= 0: raw ADC of that event (full markers = gain x10, open markers = gain x1)
-//   iEvent  < 0: all events overlaid, ADC / ADC[5], only pulses with ADC[5] > minAmplitude
+//   pedestal = (ADC[0] + ADC[1]) / 2, subtracted to all the samples before anything else (also before the cut)
+//
+//   iEvent >= 0: ADC - pedestal of that event (full markers = gain x10, open markers = gain x1)
+//   iEvent  < 0: all events overlaid, (ADC - pedestal) / (ADC[5] - pedestal), only pulses with ADC[5] - pedestal > minAmplitude
 //                red points = mean pulse, error bars = uncertainty on the mean, also printed per sample
-//                second canvas: TH2F of all the pulses, ADC / ADC[5] vs time, with the mean on top
+//                second canvas: TH2F of all the pulses vs time, with the mean on top
 //
 // Run:
 //   root -l 'drawPulse.cxx("samples.root", 10, 100, 0)'
@@ -54,10 +56,13 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
     for (int iDigi = 0; iDigi < nDigis; iDigi++) {
       if (ieta[iDigi] != ieta_sel || iphi[iDigi] != iphi_sel) continue;
       found = true;
+      float pedestal = 0.5 * (adc[iDigi*nSamples] + adc[iDigi*nSamples + 1]);
       for (int iSample = 0; iSample < nSamples; iSample++) {
         int index = iDigi*nSamples + iSample;
-        if (gain[index] == 0) gr_g10->SetPoint(gr_g10->GetN(), iSample*sampleTime, adc[index]);
-        else                  gr_g1 ->SetPoint(gr_g1 ->GetN(), iSample*sampleTime, adc[index]);
+        if (gain[index] == 0) gr_g10->SetPoint(gr_g10->GetN(), iSample*sampleTime, adc[index] - pedestal);
+        else                  gr_g1 ->SetPoint(gr_g1 ->GetN(), iSample*sampleTime, adc[index] - pedestal);
+//         if (gain[index] == 0) gr_g10->SetPoint(gr_g10->GetN(), iSample*sampleTime, adc[index]);
+//         else                  gr_g1 ->SetPoint(gr_g1 ->GetN(), iSample*sampleTime, adc[index]);
       }
     }
     if (!found) {
@@ -72,7 +77,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
     gr_g1 ->SetMarkerColor(kRed);
     if (gr_g10->GetN()) mg->Add(gr_g10, "P");
     if (gr_g1 ->GetN()) mg->Add(gr_g1,  "P");
-    mg->SetTitle(title + Form(", event %d;time [ns];ADC", iEvent_sel));
+    mg->SetTitle(title + Form(", event %d;time [ns];ADC - pedestal", iEvent_sel));
     mg->Draw("A");
     return;
   }
@@ -81,7 +86,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 //   TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];ADC / ADC[5]", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 120, -0.1, 1.1);
 //   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, "s");
   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime);
-  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];ADC / ADC[5]", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 140, -0.2, 1.2);
+  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];(ADC - pedestal) / (ADC[5] - pedestal)", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 140, -0.2, 1.2);
 
   int nPulses = 0;
   for (int iEvent = 0; iEvent < tree->GetEntries(); iEvent++) {
@@ -90,9 +95,12 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
     for (int iDigi = 0; iDigi < nDigis; iDigi++) {
       if (ieta[iDigi] != ieta_sel || iphi[iDigi] != iphi_sel) continue;
 
-      float pedestal = adc[iDigi*nSamples];
-      //---- normalize to the sample at the peak, no pedestal subtraction
-      float maximum = adc[iDigi*nSamples + iSampleMax];
+      //---- pedestal from the first two samples, subtracted before anything else
+      float pedestal = 0.5 * (adc[iDigi*nSamples] + adc[iDigi*nSamples + 1]);
+//       float pedestal = adc[iDigi*nSamples];
+      //---- normalize to the sample at the peak
+      float maximum = adc[iDigi*nSamples + iSampleMax] - pedestal;
+//       float maximum = adc[iDigi*nSamples + iSampleMax];
 //       float maximum = adc[iDigi*nSamples + iSampleMax] - pedestal;
 //       float maximum = 0;
 //       for (int iSample = 0; iSample < nSamples; iSample++) {
@@ -100,19 +108,18 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
 //         if (value > maximum) maximum = value;
 //       }
       if (maximum <= 0 || maximum <= minAmplitude) continue;
-//       if (maximum <= 0 || maximum - pedestal <= minAmplitude) continue;
 
       nPulses++;
       for (int iSample = 0; iSample < nSamples; iSample++) {
-        float value = adc[iDigi*nSamples + iSample] / maximum;
-//         float value = (adc[iDigi*nSamples + iSample] - pedestal) / maximum;
+        float value = (adc[iDigi*nSamples + iSample] - pedestal) / maximum;
+//         float value = adc[iDigi*nSamples + iSample] / maximum;
 //         h_pulse->Fill(iSample*sampleTime, value);
         p_pulse->Fill(iSample*sampleTime, value);
         h_pulse->Fill(iSample*sampleTime, value);
       }
     }
   }
-  std::cout << " " << title << ": " << nPulses << " pulses with ADC[5] > " << minAmplitude << " ADC" << std::endl;
+  std::cout << " " << title << ": " << nPulses << " pulses with ADC[5] - pedestal > " << minAmplitude << " ADC" << std::endl;
 
   //---- mean and uncertainty on the mean per sample
   std::cout << " sample   time [ns]   mean     error" << std::endl;
@@ -133,7 +140,7 @@ void drawPulse(std::string inputFile = "samples.root", int ieta_sel = 1, int iph
   gr_mean->SetMarkerColor(kRed);
   gr_mean->SetLineColor(kRed);
   gr_mean->SetLineWidth(2);
-  gr_mean->SetTitle(title + ";time [ns];ADC / ADC[5]");
+  gr_mean->SetTitle(title + ";time [ns];(ADC - pedestal) / (ADC[5] - pedestal)");
   gr_mean->Draw("AP");
 //   gr_mean->Draw("P same");
 

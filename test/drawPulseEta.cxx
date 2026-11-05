@@ -2,9 +2,10 @@
 // Draw the mean pulse (16 samples, 6.25 ns) of one ieta ring, all the crystals along iphi,
 // from the tree of SamplesTreeProducer
 //
-//   all events and all iphi overlaid, ADC / ADC[5], only pulses with ADC[5] > minAmplitude
+//   pedestal = (ADC[0] + ADC[1]) / 2, subtracted to all the samples before anything else (also before the cut)
+//   all events and all iphi overlaid, (ADC - pedestal) / (ADC[5] - pedestal), only pulses with ADC[5] - pedestal > minAmplitude
 //   red points = mean pulse, error bars = uncertainty on the mean, also printed per sample
-//   second canvas: TH2F of all the pulses, ADC / ADC[5] vs time, with the mean on top
+//   second canvas: TH2F of all the pulses vs time, with the mean on top
 //
 // Run:
 //   root -l 'drawPulseEta.cxx("samples.root", 10, 50)'
@@ -45,7 +46,7 @@ void drawPulseEta(std::string inputFile = "samples.root", int ieta_sel = 1, floa
 
   //---- all events and all iphi overlaid, normalized to the sample at the peak
   TProfile* p_pulse = new TProfile ("p_pulse", "", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime);
-  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];ADC / ADC[5]", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 140, -0.2, 1.2);
+  TH2F* h_pulse = new TH2F ("h_pulse", title + ";time [ns];(ADC - pedestal) / (ADC[5] - pedestal)", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime, 140, -0.2, 1.2);
 
   int nPulses = 0;
   std::set<int> iphi_used;
@@ -55,20 +56,22 @@ void drawPulseEta(std::string inputFile = "samples.root", int ieta_sel = 1, floa
     for (int iDigi = 0; iDigi < nDigis; iDigi++) {
       if (ieta[iDigi] != ieta_sel) continue;
 
-      //---- normalize to the sample at the peak, no pedestal subtraction
-      float maximum = adc[iDigi*nSamples + iSampleMax];
+      //---- pedestal from the first two samples, subtracted before anything else
+      float pedestal = 0.5 * (adc[iDigi*nSamples] + adc[iDigi*nSamples + 1]);
+      //---- normalize to the sample at the peak
+      float maximum = adc[iDigi*nSamples + iSampleMax] - pedestal;
       if (maximum <= 0 || maximum <= minAmplitude) continue;
 
       nPulses++;
       iphi_used.insert(iphi[iDigi]);
       for (int iSample = 0; iSample < nSamples; iSample++) {
-        float value = adc[iDigi*nSamples + iSample] / maximum;
+        float value = (adc[iDigi*nSamples + iSample] - pedestal) / maximum;
         p_pulse->Fill(iSample*sampleTime, value);
         h_pulse->Fill(iSample*sampleTime, value);
       }
     }
   }
-  std::cout << " " << title << ": " << nPulses << " pulses with ADC[5] > " << minAmplitude << " ADC, from " << iphi_used.size() << " crystals" << std::endl;
+  std::cout << " " << title << ": " << nPulses << " pulses with ADC[5] - pedestal > " << minAmplitude << " ADC, from " << iphi_used.size() << " crystals" << std::endl;
 
   //---- mean and uncertainty on the mean per sample
   std::cout << " sample   time [ns]   mean     error" << std::endl;
@@ -86,7 +89,7 @@ void drawPulseEta(std::string inputFile = "samples.root", int ieta_sel = 1, floa
   gr_mean->SetMarkerColor(kRed);
   gr_mean->SetLineColor(kRed);
   gr_mean->SetLineWidth(2);
-  gr_mean->SetTitle(title + ";time [ns];ADC / ADC[5]");
+  gr_mean->SetTitle(title + ";time [ns];(ADC - pedestal) / (ADC[5] - pedestal)");
   gr_mean->Draw("AP");
 
   TLegend* leg = new TLegend (0.60, 0.80, 0.88, 0.88);
