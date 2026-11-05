@@ -52,5 +52,5 @@ Weights from the mean pulses (ieta = 0 means all ieta):
 
 Apply the weights:
 
-    root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt")'
+    root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", -54, 119, 50)'
 
