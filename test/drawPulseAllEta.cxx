@@ -8,6 +8,9 @@
 //     pulse_ieta_X     mean pulse, error bars = uncertainty on the mean
 //     pulse_2d_ieta_X  TH2F of all the pulses vs time, with the mean on top
 //   (X = m85 ... m1, 1 ... 85)
+//   summary canvas pulse_summary with all the mean pulses, color as a function of |ieta|
+//   (solid line ieta > 0, dashed line ieta < 0)
+//   text file pulses.txt with the mean pulse per ieta: ieta, ADC[0], ADC[1], ... , ADC[15]
 //
 // Run (compiled, faster):
 //   root -l -b -q 'drawPulseAllEta.cxx+("samples.root", 50)'
@@ -25,6 +28,10 @@
 #include "TString.h"
 #include "TSystem.h"
 #include "TROOT.h"
+#include "TStyle.h"
+#include "TColor.h"
+#include "TH1F.h"
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -97,8 +104,15 @@ void drawPulseAllEta(std::string inputFile = "samples.root", float minAmplitude 
     }
   }
 
+  //---- text file with the mean pulses
+  std::ofstream file_txt ((outputFolder + "/pulses.txt").c_str());
+  file_txt << "# ieta, (ADC[i] - pedestal) / (ADC[5] - pedestal) mean, i = 0 ... " << nSamples-1 << ", pedestal = (ADC[0] + ADC[1]) / 2, ADC[5] - pedestal > " << minAmplitude << std::endl;
+
+  TGraphErrors* gr_summary[2*nEta+1];
+
   //---- draw and save
   for (int iEta = -nEta; iEta <= nEta; iEta++) {
+    gr_summary[iEta + nEta] = nullptr;
     if (iEta == 0) continue;
     int index = iEta + nEta;
     TString title = Form("ieta = %d, all iphi", iEta);
@@ -116,6 +130,11 @@ void drawPulseAllEta(std::string inputFile = "samples.root", float minAmplitude 
     gr_mean->SetLineColor(kRed);
     gr_mean->SetLineWidth(2);
     gr_mean->SetTitle(title + ";time [ns];(ADC - pedestal) / (ADC[5] - pedestal)");
+
+    file_txt << iEta;
+    for (int iSample = 0; iSample < nSamples; iSample++) file_txt << " " << Form("%.5f", p_pulse[index]->GetBinContent(iSample+1));
+    file_txt << std::endl;
+    if (nPulses[index] > 0) gr_summary[index] = gr_mean;
 
     TLegend* leg = new TLegend (0.60, 0.80, 0.88, 0.88);
     leg->AddEntry(gr_mean, Form("mean, %d pulses", nPulses[index]), "lp");
@@ -138,5 +157,36 @@ void drawPulseAllEta(std::string inputFile = "samples.root", float minAmplitude 
     delete cc;
     delete cc_2d;
   }
+  file_txt.close();
+  std::cout << " mean pulses written in " << outputFolder << "/pulses.txt" << std::endl;
+
+  //---- summary: all the mean pulses, color gradient as a function of |ieta|
+  gStyle->SetPalette(kViridis);
+  int nColors = TColor::GetNumberOfColors();
+
+  TCanvas* cc_summary = new TCanvas ("pulse_summary", "", 800, 600);
+  TH1F* h_frame = new TH1F ("h_frame", "all ieta (solid ieta > 0, dashed ieta < 0);time [ns];(ADC - pedestal) / (ADC[5] - pedestal)", nSamples, -sampleTime/2., (nSamples-0.5)*sampleTime);
+  h_frame->SetStats(0);
+  h_frame->SetMinimum(-0.1);
+  h_frame->SetMaximum(1.1);
+  h_frame->SetLineColor(0);
+  h_frame->Draw();
+
+  TLegend* leg_summary = new TLegend (0.70, 0.55, 0.88, 0.88);
+  for (int iEta = -nEta; iEta <= nEta; iEta++) {
+    int index = iEta + nEta;
+    if (!gr_summary[index]) continue;
+    int color = TColor::GetColorPalette((abs(iEta) - 1) * (nColors - 1) / (nEta - 1));
+    TGraphErrors* gr = (TGraphErrors*) gr_summary[index]->Clone();
+    gr->SetMarkerColor(color);
+    gr->SetLineColor(color);
+    gr->SetLineWidth(2);
+    gr->SetLineStyle(iEta > 0 ? 1 : 2);
+    gr->Draw("LX same");
+    if (iEta > 0 && (iEta == 1 || iEta % 20 == 0 || iEta == nEta)) leg_summary->AddEntry(gr, Form("|ieta| = %d", iEta), "l");
+  }
+  leg_summary->Draw();
+  cc_summary->SaveAs((outputFolder + "/pulse_summary.png").c_str());
+  cc_summary->SaveAs((outputFolder + "/pulse_summary.root").c_str());
 
 }
