@@ -1,1 +1,5 @@
 *.root
+pulses_output/
+*_cxx.d
+*_cxx.so
+*_ACLiC_dict_rdict.pcm
