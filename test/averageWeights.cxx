@@ -66,13 +66,7 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
 
   //---- distributions of the weights over the ieta rings, one histogram per sample
   gSystem->mkdir(outputFolder.c_str(), true);
-  //---- bigger stat box, title, axis labels: the pads are small
-  gStyle->SetOptStat(1110);
-  gStyle->SetStatW(0.40);
-  gStyle->SetStatH(0.25);
-  gStyle->SetStatFontSize(0.07);
-  //---- mean and std dev with 4 significant digits, trailing zeros kept
-  gStyle->SetStatFormat("#.4g");
+  //---- bigger title, axis labels: the pads are small
   gStyle->SetTitleFontSize(0.09);
   TCanvas* cc = new TCanvas ("weights_distributions", "", 1600, 1200);
   cc->Divide(4,4);
@@ -98,7 +92,21 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
     cc->cd(iSample + 1);
     gPad->SetLeftMargin(0.14);
     gPad->SetBottomMargin(0.15);
+    h_weight->SetStats(0);
     h_weight->Draw();
+
+    //---- own stat box: std dev with 2 significant digits, mean rounded to the same decimal place
+    double stddev = h_weight->GetStdDev();
+    int decimals = (stddev > 0) ? std::max(0, 1 - int(std::floor(std::log10(stddev)))) : 4;
+    TPaveText* stat = new TPaveText (0.55, 0.70, 0.98, 0.92, "NDC");
+    stat->SetFillColor(kWhite);
+    stat->SetTextAlign(12);
+    stat->SetTextSize(0.07);
+    stat->SetTextFont(42);
+    stat->AddText(Form("Entries  %d", int(h_weight->GetEntries())));
+    stat->AddText(Form("Mean  %.*f", decimals, h_weight->GetMean()));
+    stat->AddText(Form("Std Dev  %.*f", decimals, stddev));
+    stat->Draw();
   }
   cc->SaveAs((outputFolder + "/weights_distributions.png").c_str());
   cc->SaveAs((outputFolder + "/weights_distributions.root").c_str());
