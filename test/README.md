@@ -46,9 +46,9 @@ All ieta (-85 ... 85), plots in pulses_output/ (.png and .root), summary plot an
 
     root -l -b -q 'drawPulseAllEta.cxx+("samples.root", 50)'
 
-Weights from the mean pulses (ieta = 0 means all ieta), in EcalWeights:
+Weights from the mean pulses (ieta = 0 means all ieta):
 
-    root -l -q 'LocalCreateWeightsFromPulses.cxx("../EcalPulseDumper/test/pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
+    root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
 
 Apply the weights:
 
