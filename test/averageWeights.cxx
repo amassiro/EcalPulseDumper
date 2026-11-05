@@ -66,6 +66,12 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
 
   //---- distributions of the weights over the ieta rings, one histogram per sample
   gSystem->mkdir(outputFolder.c_str(), true);
+  //---- bigger stat box, title, axis labels: the pads are small
+  gStyle->SetOptStat(1110);
+  gStyle->SetStatW(0.40);
+  gStyle->SetStatH(0.25);
+  gStyle->SetStatFontSize(0.07);
+  gStyle->SetTitleFontSize(0.09);
   TCanvas* cc = new TCanvas ("weights_distributions", "", 1600, 1200);
   cc->Divide(4,4);
   for (int iSample = 0; iSample < nSamples; iSample++) {
@@ -78,9 +84,18 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
     float margin = 0.1 * (maximum - minimum) + 1e-4;
     TH1F* h_weight = new TH1F (Form("h_weight_%d", iSample), Form("w[%d];w[%d];ieta rings", iSample, iSample), 30, minimum - margin, maximum + margin);
     for (auto& weights : all_weights) h_weight->Fill(weights[iSample]);
+    h_weight->SetMaximum(1.6 * h_weight->GetMaximum());
     h_weight->SetLineColor(kRed);
     h_weight->SetLineWidth(2);
+    h_weight->GetXaxis()->SetLabelSize(0.06);
+    h_weight->GetXaxis()->SetTitleSize(0.07);
+    h_weight->GetXaxis()->SetNdivisions(505);
+    h_weight->GetYaxis()->SetLabelSize(0.06);
+    h_weight->GetYaxis()->SetTitleSize(0.07);
+    h_weight->GetYaxis()->SetTitleOffset(0.8);
     cc->cd(iSample + 1);
+    gPad->SetLeftMargin(0.14);
+    gPad->SetBottomMargin(0.15);
     h_weight->Draw();
   }
   cc->SaveAs((outputFolder + "/weights_distributions.png").c_str());
