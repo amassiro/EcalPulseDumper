@@ -14,10 +14,12 @@
 //                                A f(t) + A dt f'(t) ~ A f(t + dt) --> dt > 0 means the pulse is earlier
 //   last col (doFitBaseline) --> 1 (baseline)
 //
-// ieta_sel != 0 --> weights for that ieta, one line per parameter (amplitude, [amplitude*dt], [baseline]),
-//                   same format as EcalWeights/LocalCreateWeightsPhase2.cxx (input of ApplyWeights.cxx)
-// ieta_sel = 0  --> amplitude weights for all the ieta in the file, one line per ieta:
-//                   ieta, w[0], ... , w[15]
+// ieta_sel != 0 --> weights for that ieta, all the details printed on screen
+// ieta_sel = 0  --> weights for all the ieta in the file
+//
+// Output file, in both cases: amplitude weights, one line per ieta
+//   # ieta weights
+//   ieta w[0] ... w[15]
 //
 // Run:
 //   root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
@@ -192,17 +194,12 @@ void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int iet
     std::cout << std::endl;
   }
 
-  //---- write weights to file
+  //---- write weights to file, same format as for all ieta
   std::ofstream out (outputFile.c_str());
-  out << "# pulses " << pulsesFile << " ieta " << ieta_sel << " noiseCorrelation " << useNoiseCorrelation << std::endl;
-  out << "# rows: amplitude";
-  if (doFitTime)     out << ", amplitude*dt[ns]";
-  if (doFitBaseline) out << ", baseline";
+  out << "# ieta weights" << std::endl;
+  out << ieta_sel;
+  for (int iSample = 0; iSample < nSamples; iSample++) out << " " << std::setprecision(7) << weights(0, iSample);
   out << std::endl;
-  for (int iParam = 0; iParam < nParams; iParam++) {
-    for (int iSample = 0; iSample < nSamples; iSample++) out << std::setprecision(7) << weights(iParam, iSample) << " ";
-    out << std::endl;
-  }
   out.close();
   std::cout << std::endl << " written: " << outputFile << std::endl;
 
