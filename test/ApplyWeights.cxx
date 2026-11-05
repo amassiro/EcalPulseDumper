@@ -6,6 +6,8 @@
 //   pedestal  = (ADC[0] + ADC[1]) / 2
 //   amplitude = sum_i w[i] * ADC[i]
 //   event: iEvent >= 0 that event, iEvent < 0 first event with ADC[5] - pedestal > threshold
+//   then type in the terminal "+" ("-") to show the next (previous) event with ADC[5] - pedestal > threshold,
+//   anything else to stop
 //
 // Plot: ADC vs time, dashed line = pedestal, blue square = amplitude + pedestal (next to sample 5)
 //
@@ -66,71 +68,102 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
   tree->SetBranchAddress("adc",    adc);
   tree->SetBranchAddress("gain",   gain);
 
-  //---- find the event with the pulse
-  int iEventFound = -1;
-  int iDigiFound = -1;
-  int iEventStart = (iEvent_sel >= 0) ? iEvent_sel : 0;
-  int iEventEnd   = (iEvent_sel >= 0) ? iEvent_sel + 1 : tree->GetEntries();
-  for (int iEvent = iEventStart; iEvent < iEventEnd && iEventFound < 0; iEvent++) {
-    tree->GetEntry(iEvent);
-    for (int iDigi = 0; iDigi < nDigis; iDigi++) {
-      if (ieta[iDigi] != ieta_sel || iphi[iDigi] != iphi_sel) continue;
-      float pedestal = 0.5 * (adc[iDigi*nSamples] + adc[iDigi*nSamples + 1]);
-      if (adc[iDigi*nSamples + iSampleMax] - pedestal > threshold) {
-        iEventFound = iEvent;
-        iDigiFound = iDigi;
-      }
-      break;
-    }
-  }
   TString title = Form("ieta = %d, iphi = %d", ieta_sel, iphi_sel);
-  if (iEventFound < 0) {
-    std::cout << " no pulse with ADC[5] - pedestal > " << threshold << " for " << title << std::endl;
-    return;
-  }
-
-  //---- pedestal and amplitude with the weights
-  float pedestal = 0.5 * (adc[iDigiFound*nSamples] + adc[iDigiFound*nSamples + 1]);
-  float amplitude = 0;
-  for (int iSample = 0; iSample < nSamples; iSample++) amplitude += weights[iSample] * adc[iDigiFound*nSamples + iSample];
-
-  std::cout << " " << title << ", event " << iEventFound << std::endl;
-  std::cout << "   pedestal           = " << pedestal << std::endl;
-  std::cout << "   ADC[5] - pedestal  = " << adc[iDigiFound*nSamples + iSampleMax] - pedestal << std::endl;
-  std::cout << "   amplitude weights  = " << amplitude << std::endl;
-  std::cout << "   gain               = " << (gain[iDigiFound*nSamples + iSampleMax] == 0 ? "x10" : "x1") << std::endl;
-
-  //---- pulse
-  TGraph* gr_pulse = new TGraph ();
-  for (int iSample = 0; iSample < nSamples; iSample++) gr_pulse->SetPoint(iSample, iSample*sampleTime, adc[iDigiFound*nSamples + iSample]);
-  gr_pulse->SetMarkerStyle(20);
-  gr_pulse->SetMarkerColor(kRed);
-  gr_pulse->SetTitle(title + Form(", event %d;time [ns];ADC", iEventFound));
-  gr_pulse->SetMinimum(0);
-
-  //---- amplitude + pedestal
-  TGraph* gr_amplitude = new TGraph ();
-  //---- slightly shifted to the right of sample 5, to be visible
-  gr_amplitude->SetPoint(0, iSampleMax*sampleTime + 3., amplitude + pedestal);
-  gr_amplitude->SetMarkerStyle(21);
-  gr_amplitude->SetMarkerSize(1.5);
-  gr_amplitude->SetMarkerColor(kBlue);
-
   TCanvas* cc = new TCanvas ("cc", "", 800, 600);
-  gr_pulse->Draw("AP");
-  gr_amplitude->Draw("P same");
 
-  //---- pedestal, dashed line
-  TLine* line_pedestal = new TLine (gr_pulse->GetXaxis()->GetXmin(), pedestal, gr_pulse->GetXaxis()->GetXmax(), pedestal);
-  line_pedestal->SetLineStyle(2);
-  line_pedestal->SetLineWidth(2);
-  line_pedestal->Draw();
+  //---- loop: type "+" ("-") in the terminal to show the next (previous) event with a pulse, anything else to stop
+  int iEventCurrent = -1;
+  int iEventStart = (iEvent_sel >= 0) ? iEvent_sel : 0;
+  int direction = 1;
+  bool onlyOneEvent = (iEvent_sel >= 0);
+  while (true) {
 
-  TLegend* leg = new TLegend (0.55, 0.75, 0.88, 0.88);
-  leg->AddEntry(gr_pulse, "ADC", "p");
-  leg->AddEntry(gr_amplitude, Form("amplitude + pedestal = %.1f", amplitude + pedestal), "p");
-  leg->AddEntry(line_pedestal, Form("pedestal = %.1f", pedestal), "l");
-  leg->Draw();
+    //---- find the event with the pulse, forward (direction = 1) or backward (direction = -1) from iEventStart
+    int iEventFound = -1;
+    int iDigiFound = -1;
+    int iEventEnd = onlyOneEvent ? iEventStart + 1 : (direction > 0 ? tree->GetEntries() : -1);
+    for (int iEvent = iEventStart; iEvent != iEventEnd && iEvent >= 0 && iEvent < tree->GetEntries() && iEventFound < 0; iEvent += direction) {
+      tree->GetEntry(iEvent);
+      for (int iDigi = 0; iDigi < nDigis; iDigi++) {
+        if (ieta[iDigi] != ieta_sel || iphi[iDigi] != iphi_sel) continue;
+        float pedestal = 0.5 * (adc[iDigi*nSamples] + adc[iDigi*nSamples + 1]);
+        if (adc[iDigi*nSamples + iSampleMax] - pedestal > threshold) {
+          iEventFound = iEvent;
+          iDigiFound = iDigi;
+        }
+        break;
+      }
+    }
+    if (iEventFound < 0) {
+      std::cout << " no " << (iEventCurrent < 0 ? "" : (direction > 0 ? "next " : "previous ")) << "pulse with ADC[5] - pedestal > " << threshold << " for " << title << std::endl;
+      if (iEventCurrent < 0) return;
+      //---- stay on the current event
+      iEventFound = iEventCurrent;
+      tree->GetEntry(iEventFound);
+      for (int iDigi = 0; iDigi < nDigis; iDigi++) {
+        if (ieta[iDigi] == ieta_sel && iphi[iDigi] == iphi_sel) iDigiFound = iDigi;
+      }
+    }
+    iEventCurrent = iEventFound;
+
+    //---- pedestal and amplitude with the weights
+    float pedestal = 0.5 * (adc[iDigiFound*nSamples] + adc[iDigiFound*nSamples + 1]);
+    float amplitude = 0;
+    for (int iSample = 0; iSample < nSamples; iSample++) amplitude += weights[iSample] * adc[iDigiFound*nSamples + iSample];
+
+    std::cout << " " << title << ", event " << iEventFound << std::endl;
+    std::cout << "   pedestal           = " << pedestal << std::endl;
+    std::cout << "   ADC[5] - pedestal  = " << adc[iDigiFound*nSamples + iSampleMax] - pedestal << std::endl;
+    std::cout << "   amplitude weights  = " << amplitude << std::endl;
+    std::cout << "   gain               = " << (gain[iDigiFound*nSamples + iSampleMax] == 0 ? "x10" : "x1") << std::endl;
+
+    //---- pulse
+    TGraph* gr_pulse = new TGraph ();
+    for (int iSample = 0; iSample < nSamples; iSample++) gr_pulse->SetPoint(iSample, iSample*sampleTime, adc[iDigiFound*nSamples + iSample]);
+    gr_pulse->SetMarkerStyle(20);
+    gr_pulse->SetMarkerColor(kRed);
+    gr_pulse->SetTitle(title + Form(", event %d;time [ns];ADC", iEventFound));
+    gr_pulse->SetMinimum(0);
+
+    //---- amplitude + pedestal
+    TGraph* gr_amplitude = new TGraph ();
+    //---- slightly shifted to the right of sample 5, to be visible
+    gr_amplitude->SetPoint(0, iSampleMax*sampleTime + 3., amplitude + pedestal);
+    gr_amplitude->SetMarkerStyle(21);
+    gr_amplitude->SetMarkerSize(1.5);
+    gr_amplitude->SetMarkerColor(kBlue);
+
+    cc->Clear();
+    cc->cd();
+    gr_pulse->Draw("AP");
+    gr_amplitude->Draw("P same");
+
+    //---- pedestal, dashed line
+    TLine* line_pedestal = new TLine (gr_pulse->GetXaxis()->GetXmin(), pedestal, gr_pulse->GetXaxis()->GetXmax(), pedestal);
+    line_pedestal->SetLineStyle(2);
+    line_pedestal->SetLineWidth(2);
+    line_pedestal->Draw();
+
+    TLegend* leg = new TLegend (0.55, 0.75, 0.88, 0.88);
+    leg->AddEntry(gr_pulse, "ADC", "p");
+    leg->AddEntry(gr_amplitude, Form("amplitude + pedestal = %.1f", amplitude + pedestal), "p");
+    leg->AddEntry(line_pedestal, Form("pedestal = %.1f", pedestal), "l");
+    leg->Draw();
+
+    cc->Modified();
+    cc->Update();
+    gSystem->ProcessEvents();
+
+    //---- next or previous event?
+    std::cout << " type \"+\" for the next event, \"-\" for the previous one, anything else to stop: ";
+    std::string answer;
+    std::getline(std::cin, answer);
+    if      (answer == "+") direction =  1;
+    else if (answer == "-") direction = -1;
+    else break;
+    iEventStart = iEventCurrent + direction;
+    onlyOneEvent = false;
+  }
 
 }
 
