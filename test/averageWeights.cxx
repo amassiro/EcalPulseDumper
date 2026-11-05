@@ -71,6 +71,8 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
   gStyle->SetStatW(0.40);
   gStyle->SetStatH(0.25);
   gStyle->SetStatFontSize(0.07);
+  //---- mean and std dev with 4 significant digits, trailing zeros kept
+  gStyle->SetStatFormat("#.4g");
   gStyle->SetTitleFontSize(0.09);
   TCanvas* cc = new TCanvas ("weights_distributions", "", 1600, 1200);
   cc->Divide(4,4);
