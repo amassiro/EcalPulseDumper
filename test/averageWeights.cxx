@@ -3,17 +3,20 @@
 //
 //   input:  "# ieta weights", then one line per ieta: ieta w[0] ... w[15]
 //   output: average_<input file name>, one line with the 16 averaged weights
+//           canvas with the distributions of w[0] ... w[15] over the ieta rings,
+//           saved in outputFolder as weights_distributions.png and .root
 //
 // Run:
-//   root -l -q 'averageWeights.cxx("weights_pulses_all.txt")'
+//   root -l 'averageWeights.cxx("weights_pulses_all.txt")'
 //
 
-void averageWeights(std::string weightsFile = "weights_pulses_all.txt") {
+void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::string outputFolder = "pulses_output") {
 
   const int nSamples = 16;
 
   //---- read the weights, all ieta
   std::vector<double> average (nSamples, 0.);
+  std::vector< std::vector<float> > all_weights;
   int nRings = 0;
   std::ifstream file (weightsFile.c_str());
   if (!file.is_open()) {
@@ -31,6 +34,7 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt") {
     while (iss >> value) weights.push_back(value);
     if (weights.size() != nSamples) continue;
     for (int iSample = 0; iSample < nSamples; iSample++) average[iSample] += weights[iSample];
+    all_weights.push_back(weights);
     nRings++;
   }
   file.close();
@@ -59,5 +63,27 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt") {
   for (int iSample = 0; iSample < nSamples; iSample++) std::cout << std::setprecision(5) << std::fixed << average[iSample] << " ";
   std::cout << std::endl;
   std::cout << " written: " << outputFile << std::endl;
+
+  //---- distributions of the weights over the ieta rings, one histogram per sample
+  gSystem->mkdir(outputFolder.c_str(), true);
+  TCanvas* cc = new TCanvas ("weights_distributions", "", 1600, 1200);
+  cc->Divide(4,4);
+  for (int iSample = 0; iSample < nSamples; iSample++) {
+    float minimum = all_weights[0][iSample];
+    float maximum = all_weights[0][iSample];
+    for (auto& weights : all_weights) {
+      if (weights[iSample] < minimum) minimum = weights[iSample];
+      if (weights[iSample] > maximum) maximum = weights[iSample];
+    }
+    float margin = 0.1 * (maximum - minimum) + 1e-4;
+    TH1F* h_weight = new TH1F (Form("h_weight_%d", iSample), Form("w[%d];w[%d];ieta rings", iSample, iSample), 30, minimum - margin, maximum + margin);
+    for (auto& weights : all_weights) h_weight->Fill(weights[iSample]);
+    h_weight->SetLineColor(kRed);
+    h_weight->SetLineWidth(2);
+    cc->cd(iSample + 1);
+    h_weight->Draw();
+  }
+  cc->SaveAs((outputFolder + "/weights_distributions.png").c_str());
+  cc->SaveAs((outputFolder + "/weights_distributions.root").c_str());
 
 }
