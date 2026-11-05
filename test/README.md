@@ -58,6 +58,10 @@ Average of the weights over the ieta rings, in average_weights_pulses_all.txt, a
 
     root -l 'averageWeights.cxx("weights_pulses_all.txt")'
 
+Same, with the weights per crystal, in average_weights_pulses_crystals.txt and pulses_output/weights_distributions_crystals.png (.root):
+
+    root -l 'averageWeightsCrystals.cxx("weights_pulses_crystals.txt")'
+
 Apply the weights:
 
     root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50, -54, 119)'
