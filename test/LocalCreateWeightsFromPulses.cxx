@@ -16,8 +16,8 @@
 //
 // ieta_sel != 0 --> weights for that ieta, one line per parameter (amplitude, [amplitude*dt], [baseline]),
 //                   same format as EcalWeights/LocalCreateWeightsPhase2.cxx (input of ApplyWeights.cxx)
-// ieta_sel = 0  --> weights for all the ieta in the file, one line per ieta and parameter:
-//                   ieta, parameter, w[0], ... , w[15]
+// ieta_sel = 0  --> amplitude weights for all the ieta in the file, one line per ieta:
+//                   ieta, w[0], ... , w[15]
 //
 // Run:
 //   root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
@@ -112,14 +112,10 @@ void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int iet
     return;
   }
 
-  //---- all ieta: one line per ieta and parameter
+  //---- all ieta: one line per ieta with the amplitude weights
   if (ieta_sel == 0) {
     std::ofstream out (outputFile.c_str());
-    out << "# pulses " << pulsesFile << " noiseCorrelation " << useNoiseCorrelation << std::endl;
-    out << "# ieta, parameter (0 = amplitude";
-    if (doFitTime)     out << ", " << iParamTime << " = amplitude*dt[ns]";
-    if (doFitBaseline) out << ", " << iParamBaseline << " = baseline";
-    out << "), w[0] ... w[" << nSamples-1 << "]" << std::endl;
+    out << "# ieta weights" << std::endl;
 
     for (auto& pulse : pulses) {
       std::vector <float> pulseShapeDerivative;
@@ -135,11 +131,9 @@ void LocalCreateWeightsFromPulses(std::string pulsesFile = "pulses.txt", int iet
       for (int iSample = 0; iSample < nSamples; iSample++) closure += weights(0, iSample) * (pulse.second[iSample] + 100.);
       std::cout << " ieta = " << std::setw(3) << pulse.first << "  closure amplitude = " << std::setprecision(5) << std::fixed << closure << std::endl;
 
-      for (int iParam = 0; iParam < nParams; iParam++) {
-        out << pulse.first << " " << iParam;
-        for (int iSample = 0; iSample < nSamples; iSample++) out << " " << std::setprecision(7) << weights(iParam, iSample);
-        out << std::endl;
-      }
+      out << pulse.first;
+      for (int iSample = 0; iSample < nSamples; iSample++) out << " " << std::setprecision(7) << weights(0, iSample);
+      out << std::endl;
     }
     out.close();
     std::cout << std::endl << " written: " << outputFile << " (" << pulses.size() << " ieta)" << std::endl;
