@@ -80,7 +80,7 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
     float margin = 0.1 * (maximum - minimum) + 1e-4;
     TH1F* h_weight = new TH1F (Form("h_weight_%d", iSample), Form("w[%d];w[%d];ieta rings", iSample, iSample), 30, minimum - margin, maximum + margin);
     for (auto& weights : all_weights) h_weight->Fill(weights[iSample]);
-    h_weight->SetMaximum(1.6 * h_weight->GetMaximum());
+    h_weight->SetMaximum(2.0 * h_weight->GetMaximum());
     h_weight->SetLineColor(kRed);
     h_weight->SetLineWidth(2);
     h_weight->GetXaxis()->SetLabelSize(0.06);
@@ -98,7 +98,7 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
     //---- own stat box: std dev with 2 significant digits, mean rounded to the same decimal place
     double stddev = h_weight->GetStdDev();
     int decimals = (stddev > 0) ? std::max(0, 1 - int(std::floor(std::log10(stddev)))) : 4;
-    TPaveText* stat = new TPaveText (0.55, 0.70, 0.98, 0.92, "NDC");
+    TPaveText* stat = new TPaveText (0.45, 0.60, 0.98, 0.88, "NDC");
     stat->SetFillColor(kWhite);
     stat->SetBorderSize(1);
     stat->SetTextAlign(12);
@@ -107,6 +107,9 @@ void averageWeights(std::string weightsFile = "weights_pulses_all.txt", std::str
     stat->AddText(Form("Entries  %d", int(h_weight->GetEntries())));
     stat->AddText(Form("Mean  %.*f", decimals, h_weight->GetMean()));
     stat->AddText(Form("Std Dev  %.*f", decimals, stddev));
+    //---- relative spread, 2 significant digits
+    double ratio = (h_weight->GetMean() != 0) ? stddev / fabs(h_weight->GetMean()) : 0;
+    stat->AddText(ratio < 100 ? Form("Std Dev/|Mean|  %#.2g", ratio) : Form("Std Dev/|Mean|  %.0f", ratio));
     stat->Draw();
   }
   cc->SaveAs((outputFolder + "/weights_distributions.png").c_str());
