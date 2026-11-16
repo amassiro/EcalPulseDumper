@@ -3,6 +3,7 @@
 // from the tree of SamplesTreeProducer, one pulse at a time
 //
 //   weights file: "# ieta weights", then one line per ieta: ieta w[0] ... w[15]
+//                 if only one line (e.g. weights from the mean pulse of all crystals), used for all ieta
 //   pedestal  = (ADC[0] + ADC[1]) / 2
 //   amplitude = sum_i w[i] * ADC[i]
 //   pulses: ADC[5] - pedestal > threshold
@@ -151,6 +152,13 @@ void ApplyWeights(std::string inputFile = "samples.root", std::string weightsFil
     if (weights.size() == nSamples) aw_weights[ieta] = weights;
   }
   file.close();
+  //---- only one line (e.g. weights from the mean pulse of all crystals): same weights for all ieta
+  if (aw_weights.size() == 1) {
+    std::vector<float> weights_unique = aw_weights.begin()->second;
+    std::cout << " one set of weights only (ieta " << aw_weights.begin()->first << "), used for all ieta" << std::endl;
+    aw_weights.clear();
+    for (int iEta = -85; iEta <= 85; iEta++) if (iEta != 0) aw_weights[iEta] = weights_unique;
+  }
   std::cout << " read weights for " << aw_weights.size() << " ieta from " << weightsFile << std::endl;
   if (ieta_sel != 0 && aw_weights.find(ieta_sel) == aw_weights.end()) {
     std::cout << " Error: weights for ieta = " << ieta_sel << " not found in " << weightsFile << std::endl;

@@ -118,3 +118,7 @@ Apply the weights:
 
     root -l 'ApplyWeights.cxx("samples.root", "weights_pulses_all.txt", 50, -54, 119)'
 
+With the unique weights for all crystals (file with one line only, e.g. from the mean pulse of all crystals and all events):
+
+    root -l 'ApplyWeights.cxx("../../data/samples.root", "weights_pulses_average_data.txt", 50, -54, 119)'
+
