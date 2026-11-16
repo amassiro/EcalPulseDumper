@@ -28,6 +28,18 @@ Phase-2
     cmsRun runSamplesDump.py inputFiles=file:/eos/cms/store/user/treis/RelValSingleEFlatPt2To100/RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps/261009_085711/0000/step2_3.root outputFile=/tmp/amassiro/samples.root
 
 
+Test on all samples
+====
+
+    cmsRun runSamplesDump.py inputFiles=file:/eos/cms/store/user/treis/RelValSingleEFlatPt2To100/RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps/261009_085711/0000/step2_1.root outputFile=/tmp/amassiro/samples_1.root
+    cmsRun runSamplesDump.py inputFiles=file:/eos/cms/store/user/treis/RelValSingleEFlatPt2To100/RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps/261009_085711/0000/step2_2.root outputFile=/tmp/amassiro/samples_2.root
+    cmsRun runSamplesDump.py inputFiles=file:/eos/cms/store/user/treis/RelValSingleEFlatPt2To100/RelValSingleEFlatPt2To100_nopu_ecal_612wf_step2_2025ps/261009_085711/0000/step2_3.root outputFile=/tmp/amassiro/samples_3.root
+
+Merge:
+
+    hadd samples_123.root /tmp/amassiro/samples_1.root /tmp/amassiro/samples_2.root /tmp/amassiro/samples_3.root
+
+
 Plot the pulses
 ====
 
