@@ -7,6 +7,7 @@
 //   two canvases saved in outputFolder in .root and .png:
 //     pulse_average     mean pulse, error bars = uncertainty on the mean
 //     pulse_2d_average  TH2F of all the pulses vs time, with the mean on top
+//   and the same with _noNumber, without the number of pulses in the legend
 //
 // Run (compiled, faster):
 //   root -l 'drawPulseAverage.cxx+("samples.root", 50)'
@@ -19,6 +20,7 @@
 #include "TH2F.h"
 #include "TGraphErrors.h"
 #include "TLegend.h"
+#include "TLegendEntry.h"
 #include "TString.h"
 #include "TSystem.h"
 #include <iostream>
@@ -108,5 +110,14 @@ void drawPulseAverage(std::string inputFile = "samples.root", float minAmplitude
   leg->Draw();
   cc_2d->SaveAs((outputFolder + "/pulse_2d_average.png").c_str());
   cc_2d->SaveAs((outputFolder + "/pulse_2d_average.root").c_str());
+
+  //---- same plots without the number of pulses in the legend
+  ((TLegendEntry*) leg->GetListOfPrimitives()->First())->SetLabel("mean");
+  cc->Modified();
+  cc->SaveAs((outputFolder + "/pulse_average_noNumber.png").c_str());
+  cc->SaveAs((outputFolder + "/pulse_average_noNumber.root").c_str());
+  cc_2d->Modified();
+  cc_2d->SaveAs((outputFolder + "/pulse_2d_average_noNumber.png").c_str());
+  cc_2d->SaveAs((outputFolder + "/pulse_2d_average_noNumber.root").c_str());
 
 }
