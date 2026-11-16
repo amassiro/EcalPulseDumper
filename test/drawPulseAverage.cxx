@@ -113,9 +113,9 @@ void drawPulseAverage(std::string inputFile = "samples.root", float minAmplitude
 
   //---- same plots without the number of pulses in the legend
   ((TLegendEntry*) leg->GetListOfPrimitives()->First())->SetLabel("mean");
-  //---- smaller box, sized to the text, bigger text, top left (empty region)
-  leg->SetX1NDC(0.14);
-  leg->SetX2NDC(0.30);
+  //---- smaller box, sized to the text, bigger text, top right
+  leg->SetX1NDC(0.72);
+  leg->SetX2NDC(0.88);
   leg->SetY1NDC(0.80);
   leg->SetY2NDC(0.88);
   leg->SetTextSize(0.045);
