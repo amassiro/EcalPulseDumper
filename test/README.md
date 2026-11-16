@@ -62,6 +62,11 @@ All crystals and all events together, plots in pulses_output/pulse_average and p
 
     root -l 'drawPulseAverage.cxx+("samples.root", 50)'
 
+Weights from this mean pulse (pulses_output/pulses_average.txt), amplitude + pedestal only, no time, no noise correlation,
+i.e. w_i = (f_i - sum_j f_j / N) / (sum_j f_j^2 - (sum_j f_j)^2 / N):
+
+    root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses_average.txt", 0, "weights_pulses_average_simple.txt", true, false, false)'
+
 Weights from the mean pulses (ieta = 0 means all ieta):
 
     root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'

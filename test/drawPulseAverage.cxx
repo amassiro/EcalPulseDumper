@@ -8,6 +8,7 @@
 //     pulse_average     mean pulse, error bars = uncertainty on the mean
 //     pulse_2d_average  TH2F of all the pulses vs time, with the mean on top
 //   and the same with _noNumber, without the number of pulses in the legend
+//   text file pulses_average.txt with the mean pulse: 0, ADC[0], ... , ADC[15] (same format as pulses.txt)
 //
 // Run (compiled, faster):
 //   root -l 'drawPulseAverage.cxx+("samples.root", 50)'
@@ -23,6 +24,7 @@
 #include "TLegendEntry.h"
 #include "TString.h"
 #include "TSystem.h"
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -86,6 +88,16 @@ void drawPulseAverage(std::string inputFile = "samples.root", float minAmplitude
     std::cout << Form("%.5f", p_pulse->GetBinContent(iSample+1)) << " ";
   }
   std::cout << std::endl;
+
+  //---- text file with the mean pulse, same format as pulses.txt, ieta = 0 means all crystals
+  std::ofstream file_txt ((outputFolder + "/pulses_average.txt").c_str());
+  file_txt << "# ieta (0 = all crystals), (ADC[i] - pedestal) / (ADC[5] - pedestal) mean, i = 0 ... " << nSamples-1 << ", pedestal = (ADC[0] + ADC[1]) / 2, ADC[5] - pedestal > " << minAmplitude << std::endl;
+  file_txt << 0;
+  for (int iSample = 0; iSample < nSamples; iSample++) file_txt << " " << Form("%.5f", p_pulse->GetBinContent(iSample+1));
+  file_txt << std::endl;
+  file_txt.close();
+  std::cout << " mean pulse written in " << outputFolder << "/pulses_average.txt" << std::endl;
+
   gr_mean->SetMarkerStyle(20);
   gr_mean->SetMarkerColor(kRed);
   gr_mean->SetLineColor(kRed);
