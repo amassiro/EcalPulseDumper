@@ -67,6 +67,37 @@ i.e. w_i = (f_i - sum_j f_j / N) / (sum_j f_j^2 - (sum_j f_j)^2 / N):
 
     root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses_average.txt", 0, "weights_pulses_average_simple.txt", true, false, false)'
 
+
+Phase-2 weights for CMSSW
+====
+
+Amplitude and time weights in RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitPhase2WeightsProducer.cc
+(branch amassiro-phase2-weights of github.com/amassiro/cmssw).
+
+Where:
+
+    /home/amassiro/Cern/Claude/ECAL/data/samples.root = hadd of samples_1.root, samples_2.root, samples_3.root (9000 events)
+
+Mean pulse over all crystals and all events, ADC[5] - pedestal > 50 ADC (23845 pulses):
+
+    root -l -b -q 'drawPulseAverage.cxx+("../../data/samples.root", 50, "pulses_output_data")'
+
+Weights: least squares fit of amplitude A, A * dt and pedestal P (doFitBaseline = true, doFitTime = true, useNoiseCorrelation = false),
+W = (C^T C)^-1 C^T, C columns = mean pulse f, derivative df/dt (cubic spline), 1 (CMS NOTE 2006/037, eq. A.5 - A.6).
+The ieta of the mean pulse is renamed from 0 to 99, because ieta = 0 means "all ieta" and does not print the time weights:
+
+    sed 's/^0 /99 /' pulses_output_data/pulses_average.txt > pulses_output_data/pulses_average_99.txt
+    root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output_data/pulses_average_99.txt", 99, "weights_pulses_average_data.txt", true, true, false)'
+
+ampWeights and timeWeights are printed on screen as cms.vdouble(...), to be copied in the producer.
+Amplitude: sum_i w_i S_i = A. Time: sum_i t_i S_i = A * dt [ADC * ns], dt > 0 means earlier pulse.
+
+NB: the values in the branch amassiro-phase2-weights are from samples.root = step2_3 only (4542 pulses):
+
+    root -l -b -q 'drawPulseAverage.cxx+("samples.root", 50)'
+    sed 's/^0 /99 /' pulses_output/pulses_average.txt > pulses_output/pulses_average_99.txt
+    root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses_average_99.txt", 99, "weights_pulses_average_time.txt", true, true, false)'
+
 Weights from the mean pulses (ieta = 0 means all ieta):
 
     root -l -q 'LocalCreateWeightsFromPulses.cxx("pulses_output/pulses.txt", 0, "weights_pulses_all.txt")'
